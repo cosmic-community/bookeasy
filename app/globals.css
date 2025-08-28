@@ -40,4 +40,81 @@
   .select {
     @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white;
   }
+
+  /* Calendar specific styles */
+  .calendar-grid {
+    @apply w-full;
+  }
+
+  .calendar-day {
+    @apply min-h-[120px] p-2 border-r border-b border-gray-200 cursor-pointer transition-colors duration-200 relative;
+  }
+
+  .calendar-day:hover {
+    @apply bg-gray-50;
+  }
+
+  .calendar-day.current-month {
+    @apply bg-white;
+  }
+
+  .calendar-day.prev-month,
+  .calendar-day.next-month {
+    @apply bg-gray-50 text-gray-400;
+  }
+
+  .calendar-day.today {
+    @apply bg-blue-50;
+  }
+
+  .calendar-day.today .day-number {
+    @apply bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium;
+  }
+
+  .calendar-day.past {
+    @apply bg-gray-50;
+  }
+
+  .calendar-day.future:hover {
+    @apply bg-blue-50;
+  }
+
+  .day-number {
+    @apply text-sm font-medium text-gray-900 mb-1 block;
+  }
+
+  .calendar-day.prev-month .day-number,
+  .calendar-day.next-month .day-number {
+    @apply text-gray-400;
+  }
+
+  .bookings-container {
+    @apply space-y-1 mt-1;
+  }
+
+  .booking-item {
+    @apply text-xs px-2 py-1 rounded-md cursor-pointer truncate transition-colors duration-200;
+    @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+  }
+
+  .booking-item.status-confirmed {
+    @apply bg-green-100 text-green-800 hover:bg-green-200;
+  }
+
+  .booking-item.status-cancelled {
+    @apply bg-red-100 text-red-800 hover:bg-red-200;
+  }
+
+  .booking-item.status-completed {
+    @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+  }
+
+  .more-bookings {
+    @apply text-xs text-gray-600 px-2 py-1 bg-gray-100 rounded-md;
+  }
+
+  .prev-month .booking-item,
+  .next-month .booking-item {
+    @apply opacity-60;
+  }
 }
