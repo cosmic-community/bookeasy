@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Booking } from '@/types'
-import { updateBookingStatus } from '@/lib/cosmic'
 
 interface MeetingDetailsModalProps {
   booking: Booking
@@ -34,11 +33,24 @@ export default function MeetingDetailsModal({
     setIsUpdating(true)
     
     try {
-      const updatedBooking = await updateBookingStatus(booking.id, newStatus)
+      const response = await fetch(`/api/bookings/${booking.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update booking status')
+      }
+
+      const { booking: updatedBooking } = await response.json()
       onBookingUpdated(updatedBooking)
     } catch (error) {
       console.error('Error updating booking status:', error)
-      alert('Failed to update booking status')
+      alert(error instanceof Error ? error.message : 'Failed to update booking status')
     } finally {
       setIsUpdating(false)
     }

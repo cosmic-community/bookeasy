@@ -2,6 +2,9 @@ import { getBookings, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import BookingsList from '@/components/BookingsList'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default async function BookingsPage() {
   const [bookings, settings] = await Promise.all([
     getBookings(),

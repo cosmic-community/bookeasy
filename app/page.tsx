@@ -3,6 +3,9 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Calendar from '@/components/Calendar'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default async function Home() {
   const [bookings, settings, eventTypes] = await Promise.all([
     getBookings(),

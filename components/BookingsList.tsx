@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Booking } from '@/types'
-import { updateBookingStatus } from '@/lib/cosmic'
 
 interface BookingsListProps {
   bookings: Booking[]
@@ -16,7 +15,20 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
     setUpdatingBooking(bookingId)
     
     try {
-      const updatedBooking = await updateBookingStatus(bookingId, status)
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update booking status')
+      }
+
+      const { booking: updatedBooking } = await response.json()
       
       setBookings(prevBookings =>
         prevBookings.map(booking =>
@@ -25,7 +37,7 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
       )
     } catch (error) {
       console.error('Error updating booking status:', error)
-      alert('Failed to update booking status')
+      alert(error instanceof Error ? error.message : 'Failed to update booking status')
     } finally {
       setUpdatingBooking(null)
     }

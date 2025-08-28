@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { EventType, Settings } from '@/types'
-import { createBooking } from '@/lib/cosmic'
 
 interface BookingFormProps {
   eventType: EventType
@@ -49,19 +48,30 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     setError('')
 
     try {
-      await createBooking({
-        event_type_id: eventType.id,
-        attendee_name: formData.attendee_name,
-        attendee_email: formData.attendee_email,
-        booking_date: formData.booking_date,
-        booking_time: formData.booking_time,
-        notes: formData.notes
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_type_id: eventType.id,
+          attendee_name: formData.attendee_name,
+          attendee_email: formData.attendee_email,
+          booking_date: formData.booking_date,
+          booking_time: formData.booking_time,
+          notes: formData.notes
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create booking')
+      }
 
       setIsSuccess(true)
     } catch (error) {
       console.error('Error creating booking:', error)
-      setError('Failed to create booking. Please try again.')
+      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

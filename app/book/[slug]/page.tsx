@@ -7,6 +7,9 @@ import Footer from '@/components/Footer'
 import EventTypeInfo from '@/components/EventTypeInfo'
 import BookingForm from '@/components/BookingForm'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 interface BookingPageProps {
   params: Promise<{ slug: string }>
 }
