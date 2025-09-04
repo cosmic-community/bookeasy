@@ -41,10 +41,10 @@ export default function Header({ settings }: HeaderProps) {
           <nav className="flex items-center space-x-8">
             <Link 
               href="/" 
-              className={`relative px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+              className={`relative px-3 py-2 font-medium transition-all duration-200 ${
                 isActiveLink('/') 
-                  ? 'text-blue-600 bg-blue-50 shadow-sm border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'text-blue-600 border-b-2 border-blue-600' 
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -55,10 +55,10 @@ export default function Header({ settings }: HeaderProps) {
             
             <Link 
               href="/bookings" 
-              className={`relative px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+              className={`relative px-3 py-2 font-medium transition-all duration-200 ${
                 isActiveLink('/bookings') 
-                  ? 'text-blue-600 bg-blue-50 shadow-sm border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'text-blue-600 border-b-2 border-blue-600' 
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <span className="flex items-center space-x-2">
