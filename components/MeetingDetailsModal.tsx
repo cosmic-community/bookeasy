@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Booking } from '@/types'
 
 interface MeetingDetailsModalProps {
@@ -15,6 +15,7 @@ export default function MeetingDetailsModal({
   onBookingUpdated 
 }: MeetingDetailsModalProps) {
   const [isUpdating, setIsUpdating] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   const eventType = booking.metadata?.event_type
   const status = booking.metadata?.status
@@ -27,6 +28,13 @@ export default function MeetingDetailsModal({
       month: 'long',
       day: 'numeric'
     })
+  }
+
+  // Handle clicking outside the modal to close it
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+      onClose()
+    }
   }
 
   const handleStatusUpdate = async (newStatus: { key: string; value: string }) => {
@@ -70,8 +78,14 @@ export default function MeetingDetailsModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-md w-full">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onClick={handleOverlayClick}
+    >
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-xl max-w-md w-full"
+      >
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
