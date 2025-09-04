@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Settings } from '@/types'
 
 interface HeaderProps {
@@ -6,14 +9,23 @@ interface HeaderProps {
 }
 
 export default function Header({ settings }: HeaderProps) {
+  const pathname = usePathname()
   const siteName = settings?.metadata?.site_name || 'BookEasy'
   const logo = settings?.metadata?.company_logo
 
+  // Determine if a link is active based on current pathname
+  const isActiveLink = (path: string): boolean => {
+    if (path === '/') {
+      return pathname === '/' || pathname.startsWith('/book/')
+    }
+    return pathname.startsWith(path)
+  }
+
   return (
-    <header className="bg-white border-b border-gray-200">
+    <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center space-x-3">
+          <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
             {logo && (
               <img 
                 src={`${logo.imgix_url}?w=40&h=40&fit=crop&auto=format,compress`}
@@ -26,18 +38,39 @@ export default function Header({ settings }: HeaderProps) {
             <span className="text-xl font-bold text-gray-900">{siteName}</span>
           </Link>
 
-          <nav className="flex items-center space-x-6">
+          <nav className="flex items-center space-x-8">
             <Link 
               href="/" 
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              className={`relative px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isActiveLink('/') 
+                  ? 'text-blue-600 bg-blue-50 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
             >
-              Book Meeting
+              <span className="flex items-center space-x-2">
+                <span>📅</span>
+                <span>Book Meeting</span>
+              </span>
+              {isActiveLink('/') && (
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
+              )}
             </Link>
+            
             <Link 
               href="/bookings" 
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              className={`relative px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isActiveLink('/bookings') 
+                  ? 'text-blue-600 bg-blue-50 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
             >
-              Manage Bookings
+              <span className="flex items-center space-x-2">
+                <span>📋</span>
+                <span>Manage Bookings</span>
+              </span>
+              {isActiveLink('/bookings') && (
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
+              )}
             </Link>
           </nav>
         </div>
