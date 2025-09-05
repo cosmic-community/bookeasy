@@ -55,7 +55,8 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
     
     bookings.forEach(booking => {
       const date = booking.metadata?.booking_date
-      if (date) {
+      // Add explicit check for undefined/null date
+      if (date && typeof date === 'string') {
         if (!grouped[date]) {
           grouped[date] = []
         }
@@ -193,6 +194,9 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                   <div className="space-y-1">
                     {dayBookings.slice(0, 3).map((booking) => {
                       const statusInfo = getStatusInfo(booking.metadata?.status)
+                      // Add null check for booking_time to prevent undefined display
+                      const bookingTime = booking.metadata?.booking_time || 'N/A'
+                      const attendeeName = booking.metadata?.attendee_name || 'Unknown'
                       
                       return (
                         <div
@@ -211,7 +215,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                           }}
                         >
                           <div className="font-medium truncate">
-                            {booking.metadata?.booking_time} - {booking.metadata?.attendee_name}
+                            {bookingTime} - {attendeeName}
                           </div>
                         </div>
                       )
