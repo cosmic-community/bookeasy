@@ -149,6 +149,20 @@ export async function getSettings(): Promise<Settings | null> {
   }
 }
 
+// Update settings
+export async function updateSettings(settingsId: string, settingsData: Partial<Settings['metadata']>): Promise<Settings> {
+  try {
+    const response = await cosmic.objects.updateOne(settingsId, {
+      metadata: settingsData
+    });
+    
+    return response.object as Settings;
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    throw new Error('Failed to update settings');
+  }
+}
+
 // Get user/host information
 export async function getUser(id?: string): Promise<User | null> {
   try {
