@@ -120,8 +120,16 @@ export function getAvailableTimeSlots(
     const hasConflict = existingBookings.some(booking => {
       const bookingDate = booking.metadata?.booking_date
       const bookingTime = booking.metadata?.booking_time
+      const bookingStatus = booking.metadata?.status
       
       if (!bookingDate || !bookingTime) return false
+      
+      // Skip cancelled bookings
+      if (typeof bookingStatus === 'string' && bookingStatus === 'cancelled') {
+        return false
+      } else if (typeof bookingStatus === 'object' && bookingStatus?.key === 'cancelled') {
+        return false
+      }
       
       const bookingDateObj = new Date(bookingDate)
       const targetDateStr = date.toISOString().split('T')[0]

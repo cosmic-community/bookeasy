@@ -51,7 +51,7 @@ interface Booking extends CosmicObject {
     attendee_email?: string;
     booking_date?: string;
     booking_time?: string;
-    status?: {
+    status?: string | {
       key: string;
       value: string;
     };

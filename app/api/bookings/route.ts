@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const existingBookings = await getBookingsForDate(booking_date)
     const timeConflict = existingBookings.some(booking => 
       booking.metadata?.booking_time === booking_time &&
-      booking.metadata?.status?.key !== 'cancelled'
+      booking.metadata?.status !== 'cancelled'
     )
 
     if (timeConflict) {
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         attendee_email: attendee_email,
         booking_date: booking_date,
         booking_time: booking_time,
-        status: { key: 'confirmed', value: 'Confirmed' },
+        status: 'confirmed',
         notes: notes || ''
       }
     })
