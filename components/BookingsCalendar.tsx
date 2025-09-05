@@ -194,8 +194,8 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                   <div className="space-y-1">
                     {dayBookings.slice(0, 3).map((booking) => {
                       const statusInfo = getStatusInfo(booking.metadata?.status)
-                      // Fix: Provide explicit default value to ensure type safety
-                      const bookingTime = booking.metadata?.booking_time ?? 'N/A'
+                      // FIXED: Use explicit null check and provide default value
+                      const bookingTime = booking.metadata?.booking_time || 'N/A'
                       const attendeeName = booking.metadata?.attendee_name || 'Unknown'
                       
                       return (
