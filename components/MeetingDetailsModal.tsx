@@ -18,7 +18,15 @@ export default function MeetingDetailsModal({
   const modalRef = useRef<HTMLDivElement>(null)
 
   const eventType = booking.metadata?.event_type
-  const status = booking.metadata?.status
+  
+  // Helper function to safely get status key and value
+  const getStatusInfo = (status: string | { key: string; value: string } | undefined) => {
+    if (!status) return { key: 'unknown', value: 'Unknown' }
+    if (typeof status === 'string') return { key: status, value: status }
+    return status
+  }
+
+  const statusInfo = getStatusInfo(booking.metadata?.status)
   
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString)
@@ -106,8 +114,8 @@ export default function MeetingDetailsModal({
               <h3 className="text-lg font-medium text-gray-900">
                 {booking.metadata?.attendee_name}
               </h3>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status?.key || '')}`}>
-                {status?.value || 'Unknown'}
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(statusInfo.key)}`}>
+                {statusInfo.value}
               </span>
             </div>
 
@@ -148,7 +156,7 @@ export default function MeetingDetailsModal({
 
             {/* Action buttons */}
             <div className="flex flex-col space-y-2 pt-6 border-t border-gray-200">
-              {status?.key !== 'completed' && (
+              {statusInfo.key !== 'completed' && (
                 <button
                   onClick={() => handleStatusUpdate({ key: 'completed', value: 'Completed' })}
                   disabled={isUpdating}
@@ -158,7 +166,7 @@ export default function MeetingDetailsModal({
                 </button>
               )}
               
-              {status?.key !== 'cancelled' && status?.key !== 'completed' && (
+              {statusInfo.key !== 'cancelled' && statusInfo.key !== 'completed' && (
                 <button
                   onClick={() => handleStatusUpdate({ key: 'cancelled', value: 'Cancelled' })}
                   disabled={isUpdating}
@@ -168,7 +176,7 @@ export default function MeetingDetailsModal({
                 </button>
               )}
               
-              {status?.key === 'cancelled' && (
+              {statusInfo.key === 'cancelled' && (
                 <button
                   onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
                   disabled={isUpdating}

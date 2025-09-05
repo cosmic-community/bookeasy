@@ -43,6 +43,13 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
     }
   }
 
+  // Helper function to safely get status key and value
+  const getStatusInfo = (status: string | { key: string; value: string } | undefined) => {
+    if (!status) return { key: 'unknown', value: 'Unknown' }
+    if (typeof status === 'string') return { key: status, value: status }
+    return status
+  }
+
   if (!bookings || bookings.length === 0) {
     return (
       <div className="card text-center py-12">
@@ -55,7 +62,7 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
     <div className="space-y-4">
       {bookings.map((booking) => {
         const eventType = booking.metadata?.event_type
-        const status = booking.metadata?.status
+        const statusInfo = getStatusInfo(booking.metadata?.status)
         const isUpdating = updatingBooking === booking.id
 
         return (
@@ -67,15 +74,15 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
                     {booking.metadata?.attendee_name}
                   </h3>
                   <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${
-                    status?.key === 'confirmed' 
+                    statusInfo.key === 'confirmed' 
                       ? 'bg-green-100 text-green-800'
-                      : status?.key === 'cancelled'
+                      : statusInfo.key === 'cancelled'
                       ? 'bg-red-100 text-red-800'
-                      : status?.key === 'completed'
+                      : statusInfo.key === 'completed'
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {status?.value || 'Unknown'}
+                    {statusInfo.value}
                   </span>
                 </div>
                 
@@ -98,7 +105,7 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
               </div>
 
               <div className="ml-4 flex flex-col space-y-2">
-                {status?.key !== 'completed' && (
+                {statusInfo.key !== 'completed' && (
                   <button
                     onClick={() => handleStatusUpdate(booking.id, { key: 'completed', value: 'Completed' })}
                     disabled={isUpdating}
@@ -108,7 +115,7 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
                   </button>
                 )}
                 
-                {status?.key !== 'cancelled' && (
+                {statusInfo.key !== 'cancelled' && (
                   <button
                     onClick={() => handleStatusUpdate(booking.id, { key: 'cancelled', value: 'Cancelled' })}
                     disabled={isUpdating}
