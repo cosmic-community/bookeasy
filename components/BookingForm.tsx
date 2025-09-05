@@ -102,7 +102,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
       date.setDate(today.getDate() + i)
       
       const dateString = date.toISOString().split('T')[0]
-      // Fix: Handle potential undefined dateString
+      // Fix: Add explicit check to ensure dateString is defined before using it
       if (dateString) {
         const available = isDateAvailable(dateString)
         
