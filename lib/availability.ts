@@ -127,9 +127,9 @@ export function getAvailableTimeSlots(
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
   
-  // Fix: Provide default values and handle undefined cases properly
-  const startTime = eventType.metadata?.start_time || '09:00'
-  const endTime = eventType.metadata?.end_time || '17:00'
+  // Fix: Provide safe default values and handle undefined cases properly
+  const startTime = eventType.metadata?.start_time ?? '09:00'
+  const endTime = eventType.metadata?.end_time ?? '17:00'
   
   const startMinutes = timeToMinutes(startTime)
   const endMinutes = timeToMinutes(endTime)
