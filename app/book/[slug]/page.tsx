@@ -41,16 +41,11 @@ export default async function BookPage({ params }: PageProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              <Calendar 
-                eventType={eventType}
-                settings={settings}
-              />
-            </div>
-            <div className="lg:pl-8">
-              {/* Event type info will be shown here via Calendar component */}
-            </div>
+          <div className="w-full">
+            <Calendar 
+              eventType={eventType}
+              settings={settings}
+            />
           </div>
         </div>
       </main>
