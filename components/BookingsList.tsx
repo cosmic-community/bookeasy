@@ -13,9 +13,6 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set())
 
-  // Convert Set to Array for iteration to avoid TS2802 error
-  const expandedBookingsArray = Array.from(expandedBookings)
-
   const filteredBookings = bookings.filter(booking => {
     if (statusFilter === 'all') return true
     
@@ -45,7 +42,7 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus.value }) // Send just the string value
       })
 
       if (!response.ok) {
@@ -61,7 +58,6 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
   }
 
   const getStatusColor = (status: string | { key: string; value: string } | undefined) => {
-    const statusValue = typeof status === 'string' ? status : status?.value || 'confirmed'
     const statusKey = typeof status === 'string' ? status.toLowerCase() : status?.key || 'confirmed'
     
     switch (statusKey.toLowerCase()) {
