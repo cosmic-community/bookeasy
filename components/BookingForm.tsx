@@ -30,8 +30,15 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     const duration = eventType.metadata?.duration || 30
     const bufferTime = settings?.metadata?.buffer_time || 0
     
-    const [startHour, startMinute] = startTime.split(':').map(Number)
-    const [endHour, endMinute] = endTime.split(':').map(Number)
+    // Parse start time with proper validation
+    const startTimeParts = startTime.split(':')
+    const startHour = startTimeParts[0] ? Number(startTimeParts[0]) : 9
+    const startMinute = startTimeParts[1] ? Number(startTimeParts[1]) : 0
+    
+    // Parse end time with proper validation
+    const endTimeParts = endTime.split(':')
+    const endHour = endTimeParts[0] ? Number(endTimeParts[0]) : 17
+    const endMinute = endTimeParts[1] ? Number(endTimeParts[1]) : 0
     
     const startMinutes = startHour * 60 + startMinute
     const endMinutes = endHour * 60 + endMinute
