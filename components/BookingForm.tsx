@@ -27,33 +27,75 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
     setIsSubmitting(true)
     setError('')
 
+    // Client-side validation
+    if (!formData.attendee_name.trim()) {
+      setError('Name is required')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.attendee_email.trim()) {
+      setError('Email is required')
+      setIsSubmitting(false)
+      return
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.attendee_email.trim())) {
+      setError('Please enter a valid email address')
+      setIsSubmitting(false)
+      return
+    }
+
     try {
+      const payload = {
+        event_type_id: eventType.id,
+        attendee_name: formData.attendee_name.trim(),
+        attendee_email: formData.attendee_email.trim().toLowerCase(),
+        booking_date: date,
+        booking_time: time,
+        notes: formData.notes.trim()
+      }
+
+      console.log('Submitting booking payload:', payload)
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          event_type_id: eventType.id,
-          attendee_name: formData.attendee_name,
-          attendee_email: formData.attendee_email,
-          booking_date: date,
-          booking_time: time,
-          notes: formData.notes
-        })
+        body: JSON.stringify(payload)
       })
 
+      const responseData = await response.json()
+      console.log('API response:', responseData)
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create booking')
+        throw new Error(responseData.error || `Server error: ${response.status}`)
       }
 
+      // Success - call the success callback
       onSuccess()
     } catch (error) {
       console.error('Error creating booking:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
+      
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        setError('Network error. Please check your connection and try again.')
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create booking. Please try again.'
+        setError(errorMessage)
+      }
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (error) {
+      setError('')
     }
   }
 
@@ -100,8 +142,9 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             required
             className="input"
             value={formData.attendee_name}
-            onChange={(e) => setFormData({ ...formData, attendee_name: e.target.value })}
+            onChange={(e) => handleInputChange('attendee_name', e.target.value)}
             placeholder="Enter your full name"
+            disabled={isSubmitting}
           />
         </div>
 
@@ -115,8 +158,9 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             required
             className="input"
             value={formData.attendee_email}
-            onChange={(e) => setFormData({ ...formData, attendee_email: e.target.value })}
+            onChange={(e) => handleInputChange('attendee_email', e.target.value)}
             placeholder="your.email@example.com"
+            disabled={isSubmitting}
           />
         </div>
 
@@ -129,15 +173,16 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             className="textarea"
             rows={3}
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
             placeholder="Any additional information or special requests..."
+            disabled={isSubmitting}
           />
         </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-red-800 font-medium">{error}</p>
@@ -147,7 +192,7 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !formData.attendee_name.trim() || !formData.attendee_email.trim()}
           className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
