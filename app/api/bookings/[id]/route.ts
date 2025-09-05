@@ -1,146 +1,49 @@
 // app/api/bookings/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { cosmic } from '@/lib/cosmic'
+import { updateBookingStatus } from '@/lib/cosmic'
 
-interface RouteContext {
+interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-export async function PUT(request: NextRequest, context: RouteContext) {
+// PUT method for updating booking status
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = await context.params
+    const { id } = await params
     const body = await request.json()
-    console.log('Updating booking:', id, 'with data:', body)
-
-    const { status } = body
-
-    // Validate required fields
+    
     if (!id) {
       return NextResponse.json(
-        { error: 'Booking ID is required' },
+        { success: false, error: 'Booking ID is required' },
         { status: 400 }
       )
     }
 
-    if (!status) {
+    if (!body.status) {
       return NextResponse.json(
-        { error: 'Status is required' },
+        { success: false, error: 'Status is required' },
         { status: 400 }
       )
     }
 
-    // Update booking with just the status field (minimal update)
-    const response = await cosmic.objects.updateOne(id, {
-      metadata: {
-        status: status // Use the status value directly as string
-      }
-    })
+    // Update booking status - pass the status object directly
+    const updatedBooking = await updateBookingStatus(id, body.status)
 
-    console.log('Booking updated successfully:', response.object.id)
-
-    return NextResponse.json({ 
-      message: 'Booking updated successfully',
-      booking: response.object 
+    return NextResponse.json({
+      success: true,
+      booking: updatedBooking
     })
 
   } catch (error) {
-    console.error('Error updating booking:', error)
-    
-    // Provide more specific error messages
-    if (error instanceof Error) {
-      if (error.message.includes('validation')) {
-        return NextResponse.json(
-          { error: `Validation error: ${error.message}` },
-          { status: 400 }
-        )
-      } else if (error.message.includes('not found')) {
-        return NextResponse.json(
-          { error: 'Booking not found' },
-          { status: 404 }
-        )
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        return NextResponse.json(
-          { error: 'Network error connecting to database' },
-          { status: 503 }
-        )
-      }
-    }
-    
+    console.error('Error updating booking status:', error)
     return NextResponse.json(
-      { error: 'Failed to update booking. Please try again.' },
+      { success: false, error: 'Failed to update booking status' },
       { status: 500 }
     )
   }
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Booking ID is required' },
-        { status: 400 }
-      )
-    }
-
-    const response = await cosmic.objects
-      .findOne({ 
-        type: 'bookings',
-        id
-      })
-      .props(['id', 'title', 'slug', 'metadata'])
-      .depth(1)
-    
-    return NextResponse.json({ booking: response.object })
-
-  } catch (error) {
-    console.error('Error fetching booking:', error)
-    
-    if (error instanceof Error && error.message.includes('not found')) {
-      return NextResponse.json(
-        { error: 'Booking not found' },
-        { status: 404 }
-      )
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to fetch booking' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Booking ID is required' },
-        { status: 400 }
-      )
-    }
-
-    await cosmic.objects.deleteOne(id)
-    
-    return NextResponse.json({ 
-      message: 'Booking deleted successfully' 
-    })
-
-  } catch (error) {
-    console.error('Error deleting booking:', error)
-    
-    if (error instanceof Error && error.message.includes('not found')) {
-      return NextResponse.json(
-        { error: 'Booking not found' },
-        { status: 404 }
-      )
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to delete booking' },
-      { status: 500 }
-    )
-  }
+// PATCH method for updating booking status (alternative)
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  return PUT(request, { params })
 }

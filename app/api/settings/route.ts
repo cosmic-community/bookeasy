@@ -27,19 +27,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    if (!body.settingsId) {
+    // Get current settings to extract the ID
+    const currentSettings = await getSettings()
+    if (!currentSettings) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Settings ID is required' 
+          error: 'No settings found to update' 
         }, 
-        { status: 400 }
+        { status: 404 }
       )
     }
 
-    const { settingsId, ...settingsData } = body
-    
-    const updatedSettings = await updateSettings(settingsId, settingsData)
+    const settingsId = currentSettings.id
+    const updatedSettings = await updateSettings(settingsId, body)
     
     return NextResponse.json({ 
       success: true, 
