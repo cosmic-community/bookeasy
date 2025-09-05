@@ -6,10 +6,10 @@ import { formatTime, formatDate } from '@/lib/availability'
 
 export interface BookingsListProps {
   bookings: Booking[]
-  onBookingUpdate: (updatedBooking: Booking) => void
+  onBookingClick: (booking: Booking) => void
 }
 
-export default function BookingsList({ bookings, onBookingUpdate }: BookingsListProps) {
+export default function BookingsList({ bookings, onBookingClick }: BookingsListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set())
 
@@ -53,7 +53,8 @@ export default function BookingsList({ bookings, onBookingUpdate }: BookingsList
       }
 
       const { booking: updatedBooking } = await response.json()
-      onBookingUpdate(updatedBooking)
+      // Trigger callback to parent component
+      onBookingClick(updatedBooking)
     } catch (error) {
       console.error('Error updating booking status:', error)
     }
@@ -137,7 +138,10 @@ export default function BookingsList({ bookings, onBookingUpdate }: BookingsList
             return (
               <div key={booking.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                  <div 
+                    className="flex-1 cursor-pointer"
+                    onClick={() => onBookingClick(booking)}
+                  >
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="font-semibold text-gray-900">
                         {booking.metadata?.attendee_name || 'Unknown'}
@@ -169,6 +173,7 @@ export default function BookingsList({ bookings, onBookingUpdate }: BookingsList
                         }
                       }}
                       className="text-sm border border-gray-200 rounded px-2 py-1 bg-white"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {statusOptions.map((option) => (
                         <option key={option.key} value={option.key}>
@@ -178,7 +183,10 @@ export default function BookingsList({ bookings, onBookingUpdate }: BookingsList
                     </select>
                     
                     <button
-                      onClick={() => toggleExpanded(booking.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleExpanded(booking.id)
+                      }}
                       className="text-gray-400 hover:text-gray-600"
                     >
                       {isExpanded ? '▲' : '▼'}

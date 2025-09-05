@@ -1,22 +1,24 @@
 'use client'
 
+import { Booking } from '@/types'
 import { AvailableDay } from '@/lib/availability'
 
 interface CalendarGridProps {
-  year: number
-  month: number
-  availableDays: AvailableDay[]
-  selectedDate: string | null
-  onDateSelect: (date: string | null) => void
+  bookings: Booking[]
+  currentMonth: Date
+  selectedDate: string
+  onDateClick: (date: string) => void
 }
 
 export default function CalendarGrid({ 
-  year, 
-  month, 
-  availableDays, 
+  bookings,
+  currentMonth,
   selectedDate, 
-  onDateSelect 
+  onDateClick 
 }: CalendarGridProps) {
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+  
   // Generate calendar grid data
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
@@ -28,6 +30,8 @@ export default function CalendarGrid({
     date: number | null
     dateString: string | null
     available: boolean
+    hasBookings?: boolean
+    bookingCount?: number
     isPrevMonth?: boolean
     isNextMonth?: boolean
   }> = []
@@ -40,12 +44,24 @@ export default function CalendarGrid({
   // Add all days in the current month
   for (let date = 1; date <= daysInMonth; date++) {
     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`
-    const availableDay = availableDays.find(d => d.date === dateString)
+    
+    // Check if this date has bookings
+    const dayBookings = bookings.filter(booking => {
+      const bookingDate = booking.metadata?.booking_date
+      if (!bookingDate) return false
+      
+      const bookingDateObj = new Date(bookingDate + 'T00:00:00')
+      const targetDateObj = new Date(dateString + 'T00:00:00')
+      
+      return bookingDateObj.toDateString() === targetDateObj.toDateString()
+    })
     
     calendarDays.push({
       date,
       dateString,
-      available: availableDay?.available || false
+      available: true,
+      hasBookings: dayBookings.length > 0,
+      bookingCount: dayBookings.length
     })
   }
 
@@ -60,7 +76,7 @@ export default function CalendarGrid({
     if (dateString) {
       const clickedDay = calendarDays.find(d => d.dateString === dateString)
       if (clickedDay?.available) {
-        onDateSelect(dateString)
+        onDateClick(dateString)
       }
     }
   }
@@ -86,7 +102,7 @@ export default function CalendarGrid({
             <div
               key={index}
               className={`
-                aspect-square min-h-[80px] flex items-center justify-center text-sm border border-gray-100 cursor-pointer transition-all duration-200 rounded-lg
+                aspect-square min-h-[80px] flex flex-col items-center justify-center text-sm border border-gray-100 cursor-pointer transition-all duration-200 rounded-lg relative
                 ${day.date === null
                   ? 'bg-gray-50 cursor-not-allowed'
                   : day.available
@@ -101,9 +117,18 @@ export default function CalendarGrid({
               onClick={() => handleDayClick(day.dateString)}
             >
               {day.date && (
-                <span className="font-medium">
-                  {day.date}
-                </span>
+                <>
+                  <span className="font-medium">
+                    {day.date}
+                  </span>
+                  {day.hasBookings && day.bookingCount && (
+                    <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${
+                      isSelected ? 'bg-white text-primary' : 'bg-primary text-white'
+                    }`}>
+                      {day.bookingCount}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )
@@ -123,6 +148,12 @@ export default function CalendarGrid({
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 bg-primary/10 border border-primary/30 rounded"></div>
           <span>Today</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 bg-primary rounded border relative">
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center text-xs font-bold text-primary">1</div>
+          </div>
+          <span>Has Bookings</span>
         </div>
       </div>
     </div>
