@@ -43,7 +43,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
     
     while (current <= endDate) {
       days.push(new Date(current))
-      current.setDate(current.setDate() + 1)
+      current.setDate(current.getDate() + 1) // Fix: setDate returns a number, need to pass it to getDate() + 1
     }
     
     return days
@@ -194,8 +194,8 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                   <div className="space-y-1">
                     {dayBookings.slice(0, 3).map((booking) => {
                       const statusInfo = getStatusInfo(booking.metadata?.status)
-                      // Add null check for booking_time to prevent undefined display
-                      const bookingTime = booking.metadata?.booking_time || 'N/A'
+                      // Fix: Provide explicit type safety and default value for booking_time
+                      const bookingTime: string = booking.metadata?.booking_time ?? 'N/A'
                       const attendeeName = booking.metadata?.attendee_name || 'Unknown'
                       
                       return (
