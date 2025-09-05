@@ -109,11 +109,10 @@ export function getAvailableDays(
     
     // Fix: Safely handle the date string conversion with proper fallback
     const isoString = date.toISOString()
-    const dateString = isoString.split('T')[0]
-    if (!dateString) {
-      // Skip this day if we can't generate a valid date string
-      continue
-    }
+    const dateParts = isoString.split('T')
+    const dateString = dateParts[0] || date.getFullYear() + '-' + 
+      String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(date.getDate()).padStart(2, '0')
     
     days.push({
       date: dateString,
@@ -159,8 +158,9 @@ export function getAvailableTimeSlots(
     let available = true
     let reason = ''
     
-    // Check minimum notice
-    const slotDate = new Date(date + 'T' + timeStr)
+    // Check minimum notice - Fix: Properly handle the time string
+    const fullDateTimeString = date + 'T' + timeStr
+    const slotDate = new Date(fullDateTimeString)
     if (!isDateWithinMinimumNotice(slotDate, timeStr, settings)) {
       available = false
       reason = 'Too soon to book'
