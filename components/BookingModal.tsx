@@ -57,7 +57,13 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
 
   const formatTime = (timeString: string | undefined) => {
     if (!timeString) return 'Time not available'
-    const [hours, minutes] = timeString.split(':')
+    const timeParts = timeString.split(':')
+    const hours = timeParts[0]
+    const minutes = timeParts[1]
+    
+    // Ensure both hours and minutes are defined before parsing
+    if (!hours || !minutes) return 'Invalid time'
+    
     const date = new Date()
     date.setHours(parseInt(hours, 10), parseInt(minutes, 10))
     return date.toLocaleTimeString('en-US', {
