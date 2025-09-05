@@ -107,8 +107,15 @@ export function getAvailableDays(
       reason = 'Outside booking window'
     }
     
+    // Fix: Safely handle the date string conversion with proper fallback
+    const dateString = date.toISOString().split('T')[0]
+    if (!dateString) {
+      // Skip this day if we can't generate a valid date string
+      continue
+    }
+    
     days.push({
-      date: date.toISOString().split('T')[0] || '',
+      date: dateString,
       dayName,
       available,
       reason: available ? undefined : reason
