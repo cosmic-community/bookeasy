@@ -61,12 +61,20 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     }
 
     const slots: string[] = []
-    // Fix: Ensure startTime and endTime are defined strings before using in Date constructor
-    const safeStartTime = startTime || '09:00'
-    const safeEndTime = endTime || '17:00'
+    // Fix: Ensure startTime and endTime are defined strings with proper validation
+    if (!startTime || !endTime) {
+      console.warn('Start time or end time is not defined')
+      return []
+    }
     
-    const start = new Date(`2000-01-01T${safeStartTime}:00`)
-    const end = new Date(`2000-01-01T${safeEndTime}:00`)
+    const start = new Date(`2000-01-01T${startTime}:00`)
+    const end = new Date(`2000-01-01T${endTime}:00`)
+    
+    // Validate that the dates were created successfully
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.warn('Invalid time format detected')
+      return []
+    }
     
     while (start < end) {
       const timeString = start.toTimeString().slice(0, 5)
@@ -79,9 +87,9 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
 
   // Update available time slots when date changes
   useEffect(() => {
-    // Fix: Add explicit null/undefined check and ensure string type before calling generateTimeSlots
+    // Fix: Add explicit validation for booking_date
     const selectedDate = formData.booking_date
-    if (selectedDate && typeof selectedDate === 'string' && selectedDate.trim() !== '') {
+    if (selectedDate && selectedDate.trim() !== '') {
       const slots = generateTimeSlots(selectedDate)
       setAvailableTimeSlots(slots)
       
@@ -104,8 +112,8 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
       date.setDate(today.getDate() + i)
       
       const dateString = date.toISOString().split('T')[0]
-      // Fix: Add explicit check to ensure dateString is defined before using it
-      if (dateString) {
+      // Fix: Ensure dateString is defined and valid
+      if (dateString && dateString.length > 0) {
         const available = isDateAvailable(dateString)
         
         dates.push({
@@ -130,15 +138,21 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     setIsSubmitting(true)
     setError('')
 
-    // Final validation - Fix: Ensure formData.booking_date is a string before validation
+    // Final validation - Fix: Ensure formData.booking_date is valid before validation
     const selectedDate = formData.booking_date
-    if (!selectedDate || typeof selectedDate !== 'string' || !isDateAvailable(selectedDate)) {
+    if (!selectedDate || selectedDate.trim() === '') {
+      setError('Please select a date for your booking.')
+      setIsSubmitting(false)
+      return
+    }
+    
+    if (!isDateAvailable(selectedDate)) {
       setError('Selected date is not available. Please choose an available date.')
       setIsSubmitting(false)
       return
     }
 
-    if (!availableTimeSlots.includes(formData.booking_time)) {
+    if (!formData.booking_time || !availableTimeSlots.includes(formData.booking_time)) {
       setError('Selected time is not available. Please choose an available time slot.')
       setIsSubmitting(false)
       return
