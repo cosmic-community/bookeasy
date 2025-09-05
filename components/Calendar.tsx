@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { EventType, Booking, Settings } from '@/types'
-import { getAvailableDays, getAvailableTimeSlots } from '@/lib/availability'
+import { getAvailableDays, getAvailableTimeSlots, TimeSlot } from '@/lib/availability'
 import CalendarGrid from './CalendarGrid'
 import BookingModal from './BookingModal'
 
@@ -51,7 +51,6 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
     setSelectedTime(null)
   }
 
-  // Fix: Update the function signature to accept SetStateAction<string | null>
   const handleDateSelect = (value: React.SetStateAction<string | null>) => {
     if (typeof value === 'function') {
       setSelectedDate(prevDate => {
@@ -98,7 +97,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
   const availableDays = getAvailableDays(year, month, eventType, settings)
 
   // Get time slots for selected date
-  const timeSlots = selectedDate ? 
+  const timeSlots: TimeSlot[] = selectedDate ? 
     getAvailableTimeSlots(selectedDate, eventType, existingBookings, settings) : 
     []
 
@@ -171,7 +170,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
                       : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
                     }
                   `}
-                  title={!slot.available ? slot.reason : undefined}
+                  title={!slot.available && slot.reason ? slot.reason : undefined}
                 >
                   {new Date(`2000-01-01T${slot.time}`).toLocaleTimeString('en-US', {
                     hour: 'numeric',
