@@ -1,103 +1,62 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Booking } from '@/types'
+import { formatTime, formatDate, formatDuration } from '@/lib/availability'
 
-export interface BookingModalProps {
+interface BookingModalProps {
   booking: Booking
   onClose: () => void
-  onBookingUpdated: (updatedBooking: Booking) => void
 }
 
-export default function BookingModal({ booking, onClose, onBookingUpdated }: BookingModalProps) {
+export default function BookingModal({ booking, onClose }: BookingModalProps) {
   const [isUpdating, setIsUpdating] = useState(false)
-  const [error, setError] = useState('')
-
-  // Handle escape key press
-  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      onClose()
+  const [currentStatus, setCurrentStatus] = useState(() => {
+    const status = booking.metadata?.status
+    if (typeof status === 'string') {
+      return status
+    } else if (typeof status === 'object' && status?.value) {
+      return status.value
     }
-  }, [onClose])
+    return 'Confirmed'
+  })
 
-  // Handle click outside modal
-  const handleBackdropClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose()
-    }
-  }, [onClose])
-
-  // Set up escape key listener
-  useEffect(() => {
-    document.addEventListener('keydown', handleEscapeKey)
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey)
-    }
-  }, [handleEscapeKey])
+  const eventType = booking.metadata?.event_type
+  const bookingDate = booking.metadata?.booking_date
+  const bookingTime = booking.metadata?.booking_time
+  const attendeeName = booking.metadata?.attendee_name
+  const attendeeEmail = booking.metadata?.attendee_email
+  const notes = booking.metadata?.notes
 
   const handleStatusUpdate = async (newStatus: string) => {
     setIsUpdating(true)
-    setError('')
-
+    
     try {
       const response = await fetch(`/api/bookings/${booking.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: newStatus // Send just the status value as string
-        }),
+          status: { key: newStatus.toLowerCase(), value: newStatus }
+        })
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update booking')
+        throw new Error('Failed to update booking status')
       }
 
-      const { booking: updatedBooking } = await response.json()
-      onBookingUpdated(updatedBooking)
-      onClose()
+      setCurrentStatus(newStatus)
     } catch (error) {
-      console.error('Error updating booking:', error)
-      setError(error instanceof Error ? error.message : 'Failed to update booking')
+      console.error('Error updating booking status:', error)
+      alert('Failed to update booking status. Please try again.')
     } finally {
       setIsUpdating(false)
     }
   }
 
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'Date not available'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const formatTime = (timeString: string | undefined) => {
-    if (!timeString) return 'Time not available'
-    const timeParts = timeString.split(':')
-    const hours = timeParts[0]
-    const minutes = timeParts[1]
-    
-    // Ensure both hours and minutes are defined before parsing
-    if (!hours || !minutes) return 'Invalid time'
-    
-    const date = new Date()
-    date.setHours(parseInt(hours, 10), parseInt(minutes, 10))
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
-
-  const getStatusColor = (status: string | { key: string; value: string }) => {
-    const statusValue = typeof status === 'string' ? status : status.value
-    switch (statusValue?.toLowerCase()) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'confirmed':
         return 'bg-green-100 text-green-800'
       case 'cancelled':
@@ -109,160 +68,183 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
     }
   }
 
-  const currentStatus = typeof booking.metadata.status === 'string' 
-    ? booking.metadata.status 
-    : booking.metadata.status?.value || 'Unknown'
-
   return (
-    <div 
-      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
-    >
-      <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()} // Prevent event bubbling
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
-            📅 Booking Details
+            Booking Details
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-4 space-y-6">
-          {/* Event Type */}
-          {booking.metadata.event_type && (
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {booking.metadata.event_type.title}
-              </h3>
-              <p className="text-gray-600">
-                {booking.metadata.event_type.metadata?.description}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Duration: {booking.metadata.event_type.metadata?.duration} minutes
-              </p>
-            </div>
-          )}
-
-          {/* Attendee Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Attendee Name
-              </label>
-              <p className="text-gray-900">{booking.metadata.attendee_name}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <p className="text-gray-900">{booking.metadata.attendee_email}</p>
-            </div>
-          </div>
-
-          {/* Date and Time */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date
-              </label>
-              <p className="text-gray-900">
-                {formatDate(booking.metadata.booking_date)}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time
-              </label>
-              <p className="text-gray-900">
-                {formatTime(booking.metadata.booking_time)}
-              </p>
-            </div>
-          </div>
-
-          {/* Current Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.metadata.status || 'Unknown')}`}>
+        <div className="p-6 space-y-6">
+          {/* Status and Actions */}
+          <div className="flex items-center justify-between">
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(currentStatus)}`}
+            >
               {currentStatus}
             </span>
+            
+            <div className="flex gap-2">
+              {currentStatus !== 'Confirmed' && (
+                <button
+                  onClick={() => handleStatusUpdate('Confirmed')}
+                  disabled={isUpdating}
+                  className="btn btn-sm bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Confirm
+                </button>
+              )}
+              {currentStatus !== 'Completed' && (
+                <button
+                  onClick={() => handleStatusUpdate('Completed')}
+                  disabled={isUpdating}
+                  className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Complete
+                </button>
+              )}
+              {currentStatus !== 'Cancelled' && (
+                <button
+                  onClick={() => handleStatusUpdate('Cancelled')}
+                  disabled={isUpdating}
+                  className="btn btn-sm bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Notes */}
-          {booking.metadata.notes && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                {booking.metadata.notes}
+          {/* Attendee Information */}
+          <div className="card bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              👤 Attendee Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Name</label>
+                <p className="text-gray-900">{attendeeName || 'Not provided'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <p className="text-gray-900">{attendeeEmail || 'Not provided'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Event Information */}
+          <div className="card bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              📅 Event Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Event Type</label>
+                <p className="text-gray-900">
+                  {typeof eventType === 'object' && eventType?.title 
+                    ? eventType.title 
+                    : 'Unknown Event Type'
+                  }
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Duration</label>
+                <p className="text-gray-900">
+                  {typeof eventType === 'object' && eventType?.metadata?.duration
+                    ? formatDuration(eventType.metadata.duration)
+                    : 'Not specified'
+                  }
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Date</label>
+                <p className="text-gray-900">
+                  {bookingDate ? formatDate(bookingDate) : 'Not set'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Time</label>
+                <p className="text-gray-900">
+                  {bookingTime ? formatTime(bookingTime) : 'Not set'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Event Description */}
+          {typeof eventType === 'object' && eventType?.metadata?.description && (
+            <div className="card bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                📝 Event Description
+              </h3>
+              <p className="text-gray-700">
+                {eventType.metadata.description}
               </p>
             </div>
           )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-red-800 font-medium">{error}</p>
+          {/* Notes */}
+          {notes && (
+            <div className="card bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                💬 Notes
+              </h3>
+              <p className="text-gray-700 whitespace-pre-wrap">
+                {notes}
+              </p>
+            </div>
+          )}
+
+          {/* Host Information */}
+          {typeof eventType === 'object' && eventType?.metadata?.host && (
+            <div className="card bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                🏢 Host Information
+              </h3>
+              <div className="flex items-center gap-4">
+                {typeof eventType.metadata.host === 'object' && eventType.metadata.host?.metadata?.profile_photo?.imgix_url && (
+                  <img
+                    src={`${eventType.metadata.host.metadata.profile_photo.imgix_url}?w=64&h=64&fit=crop&auto=format,compress`}
+                    alt="Host"
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {typeof eventType.metadata.host === 'object' && eventType.metadata.host?.metadata?.full_name
+                      ? eventType.metadata.host.metadata.full_name
+                      : 'Host'
+                    }
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {typeof eventType.metadata.host === 'object' && eventType.metadata.host?.metadata?.email
+                      ? eventType.metadata.host.metadata.email
+                      : 'No email provided'
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer - Action Buttons */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Update booking status:
-            </p>
-            <div className="flex items-center space-x-3">
-              {currentStatus !== 'Confirmed' && (
-                <button
-                  onClick={() => handleStatusUpdate('Confirmed')}
-                  disabled={isUpdating}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Confirm'}
-                </button>
-              )}
-              
-              {currentStatus !== 'Completed' && (
-                <button
-                  onClick={() => handleStatusUpdate('Completed')}
-                  disabled={isUpdating}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Complete'}
-                </button>
-              )}
-              
-              {currentStatus !== 'Cancelled' && (
-                <button
-                  onClick={() => handleStatusUpdate('Cancelled')}
-                  disabled={isUpdating}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Cancel'}
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="flex justify-end gap-3 p-6 border-t">
+          <button
+            onClick={onClose}
+            className="btn btn-secondary"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
