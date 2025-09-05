@@ -102,7 +102,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
     []
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
+    <div className="bg-white rounded-lg shadow-sm border p-6 min-h-[800px]">
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -131,17 +131,19 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
       </div>
 
       {/* Calendar Grid */}
-      <CalendarGrid
-        year={year}
-        month={month}
-        availableDays={availableDays}
-        selectedDate={selectedDate}
-        onDateSelect={handleDateSelect}
-      />
+      <div className="min-h-[400px] mb-6">
+        <CalendarGrid
+          year={year}
+          month={month}
+          availableDays={availableDays}
+          selectedDate={selectedDate}
+          onDateSelect={handleDateSelect}
+        />
+      </div>
 
       {/* Time Slots */}
       {selectedDate && (
-        <div className="mt-6 pt-6 border-t">
+        <div className="mt-6 pt-6 border-t min-h-[250px]">
           <h3 className="text-lg font-medium mb-4">
             Available Times for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
               weekday: 'long',

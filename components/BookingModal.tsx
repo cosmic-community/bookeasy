@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Booking } from '@/types'
 
 export interface BookingModalProps {
@@ -13,6 +13,28 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState('')
 
+  // Handle escape key press
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      onClose()
+    }
+  }, [onClose])
+
+  // Handle click outside modal
+  const handleBackdropClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose()
+    }
+  }, [onClose])
+
+  // Set up escape key listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [handleEscapeKey])
+
   const handleStatusUpdate = async (newStatus: string) => {
     setIsUpdating(true)
     setError('')
@@ -24,7 +46,7 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: { key: newStatus.toLowerCase(), value: newStatus }
+          status: newStatus // Send just the status value as string
         }),
       })
 
@@ -92,8 +114,14 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
     : booking.metadata.status?.value || 'Unknown'
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+      >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
