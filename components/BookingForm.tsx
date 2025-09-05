@@ -79,9 +79,10 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
 
   // Update available time slots when date changes
   useEffect(() => {
-    // Fix: Add explicit check to ensure formData.booking_date is not empty before calling generateTimeSlots
-    if (formData.booking_date && formData.booking_date.trim() !== '') {
-      const slots = generateTimeSlots(formData.booking_date)
+    // Fix: Add explicit null/undefined check before calling generateTimeSlots
+    const selectedDate = formData.booking_date
+    if (selectedDate && selectedDate.trim() !== '') {
+      const slots = generateTimeSlots(selectedDate)
       setAvailableTimeSlots(slots)
       
       // Clear selected time if it's no longer available
@@ -328,7 +329,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-red-800 text-sm">{error}</p>
             </div>
-          )}
+            )}
 
           <button
             type="submit"
