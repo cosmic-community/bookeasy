@@ -6,8 +6,8 @@ import { formatTime, formatDate } from '@/lib/availability'
 
 interface BookingFormProps {
   eventType: EventType
-  date: string  // Fixed: Changed from selectedDate to match usage
-  time: string  // Fixed: Changed from selectedTime to match usage  
+  date: string
+  time: string
   onSuccess: () => void
   settings: Settings | null
 }

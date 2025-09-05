@@ -46,8 +46,7 @@ export function isDateWithinBookingWindow(date: Date, settings: Settings | null)
 
 // Check if a date meets minimum notice requirements
 export function isDateWithinMinimumNotice(date: Date, time: string, settings: Settings | null): boolean {
-  if (!settings?.metadata?.minimum_notice_hours) return true
-  if (!time) return false
+  if (!settings?.metadata?.minimum_notice_hours || !time) return true
   
   const now = new Date()
   const bookingDateTime = new Date(date)
@@ -128,8 +127,8 @@ export function getAvailableTimeSlots(
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
   
-  const startTime = eventType.metadata?.start_time || '09:00'
-  const endTime = eventType.metadata?.end_time || '17:00'
+  const startTime = eventType.metadata?.start_time ?? '09:00'
+  const endTime = eventType.metadata?.end_time ?? '17:00'
   
   const startMinutes = timeToMinutes(startTime)
   const endMinutes = timeToMinutes(endTime)
@@ -161,25 +160,23 @@ export function getAvailableTimeSlots(
     // Check for conflicts with existing bookings
     if (available) {
       for (const booking of existingBookings) {
-        if (booking.metadata?.booking_date === date) {
-          const bookingTime = booking.metadata?.booking_time
-          if (bookingTime) {  // Fixed: Added null check for bookingTime
-            const bookingMinutes = timeToMinutes(bookingTime)
-            const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
-            const bookingEndMinutes = bookingMinutes + bookingDuration
-            
-            // Add buffer time to existing booking
-            const bufferedStartMinutes = bookingMinutes - bufferTime
-            const bufferedEndMinutes = bookingEndMinutes + bufferTime
-            
-            // Check if new slot overlaps with buffered existing booking
-            if ((minutes >= bufferedStartMinutes && minutes < bufferedEndMinutes) ||
-                (slotEndMinutes > bufferedStartMinutes && slotEndMinutes <= bufferedEndMinutes) ||
-                (minutes <= bufferedStartMinutes && slotEndMinutes >= bufferedEndMinutes)) {
-              available = false
-              reason = 'Time slot unavailable'
-              break
-            }
+        if (booking.metadata?.booking_date === date && booking.metadata?.booking_time) {
+          const bookingTime = booking.metadata.booking_time
+          const bookingMinutes = timeToMinutes(bookingTime)
+          const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
+          const bookingEndMinutes = bookingMinutes + bookingDuration
+          
+          // Add buffer time to existing booking
+          const bufferedStartMinutes = bookingMinutes - bufferTime
+          const bufferedEndMinutes = bookingEndMinutes + bufferTime
+          
+          // Check if new slot overlaps with buffered existing booking
+          if ((minutes >= bufferedStartMinutes && minutes < bufferedEndMinutes) ||
+              (slotEndMinutes > bufferedStartMinutes && slotEndMinutes <= bufferedEndMinutes) ||
+              (minutes <= bufferedStartMinutes && slotEndMinutes >= bufferedEndMinutes)) {
+            available = false
+            reason = 'Time slot unavailable'
+            break
           }
         }
       }
