@@ -128,12 +128,8 @@ export function getAvailableTimeSlots(
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
   
-  const startTime = eventType.metadata?.start_time
-  const endTime = eventType.metadata?.end_time
-  
-  if (!startTime || !endTime) {
-    return slots
-  }
+  const startTime = eventType.metadata?.start_time || '09:00'
+  const endTime = eventType.metadata?.end_time || '17:00'
   
   const startMinutes = timeToMinutes(startTime)
   const endMinutes = timeToMinutes(endTime)
@@ -166,7 +162,7 @@ export function getAvailableTimeSlots(
     if (available) {
       for (const booking of existingBookings) {
         if (booking.metadata?.booking_date === date) {
-          const bookingTime = booking.metadata?.booking_time
+          const bookingTime = booking.metadata?.booking_time || ''
           if (bookingTime) {
             const bookingMinutes = timeToMinutes(bookingTime)
             const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30

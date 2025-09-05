@@ -1,33 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { EventType, Settings } from '@/types'
+import { useState, useEffect, Dispatch, SetStateAction } from 'react'
+import { EventType, Settings, Booking } from '@/types'
+import { getAvailableDays } from '@/lib/availability'
 import CalendarGrid from './CalendarGrid'
 
 interface CalendarProps {
-  eventTypes: EventType[]
+  eventType: EventType
   settings: Settings | null
+  selectedDate: string | null
+  onDateSelect: Dispatch<SetStateAction<string | null>>
 }
 
-export default function Calendar({ eventTypes, settings }: CalendarProps) {
+export default function Calendar({ eventType, settings, selectedDate, onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(
-    eventTypes.length > 0 ? eventTypes[0] : null
-  )
+  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(eventType)
 
-  // Update selected event type when eventTypes change
   useEffect(() => {
-    if (eventTypes.length > 0 && !selectedEventType) {
-      setSelectedEventType(eventTypes[0])
+    if (eventType) {
+      setSelectedEventType(eventType)
     }
-  }, [eventTypes, selectedEventType])
+  }, [eventType])
 
-  const handlePrevMonth = () => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+  useEffect(() => {
+    if (eventType) {
+      setSelectedEventType(eventType)
+    }
+  }, [eventType])
+
+  const goToPreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
   }
 
-  const handleNextMonth = () => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+  const goToNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
   }
 
   const monthNames = [
@@ -35,88 +41,63 @@ export default function Calendar({ eventTypes, settings }: CalendarProps) {
     'July', 'August', 'September', 'October', 'November', 'December'
   ]
 
-  return (
-    <div className="card">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-          📅 Available Times
-        </h3>
-        
-        {eventTypes.length > 1 && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Event Type
-            </label>
-            <select
-              className="select text-sm"
-              value={selectedEventType?.id || ''}
-              onChange={(e) => {
-                const eventType = eventTypes.find(et => et.id === e.target.value)
-                setSelectedEventType(eventType || null)
-              }}
-            >
-              {eventTypes.map((eventType) => (
-                <option key={eventType.id} value={eventType.id}>
-                  {eventType.metadata?.event_name || eventType.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
 
+  // Only render if we have a valid eventType
+  if (!selectedEventType) {
+    return (
+      <div className="text-center text-gray-500 p-8">
+        <p>Please select an event type to view availability.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <button
-          onClick={handlePrevMonth}
+          onClick={goToPreviousMonth}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="Previous month"
         >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         
-        <h4 className="font-medium text-gray-900">
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h4>
+        <h2 className="text-xl font-semibold text-gray-900">
+          {monthNames[month]} {year}
+        </h2>
         
         <button
-          onClick={handleNextMonth}
+          onClick={goToNextMonth}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="Next month"
         >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>
 
-      {/* Calendar Grid */}
-      {selectedEventType ? (
-        <CalendarGrid
-          year={currentDate.getFullYear()}
-          month={currentDate.getMonth()}
-          eventType={selectedEventType}
-          settings={settings}
-        />
-      ) : (
-        <div className="text-center py-8 text-gray-500">
-          <p>No event types available</p>
-        </div>
-      )}
-
-      {/* Calendar Legend */}
-      <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-600">
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-primary rounded mr-2"></div>
-          <span>Available</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-gray-200 rounded mr-2"></div>
-          <span>Unavailable</span>
-        </div>
+      {/* Days of Week Header */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+            {day}
+          </div>
+        ))}
       </div>
+
+      {/* Calendar Grid */}
+      <CalendarGrid
+        eventType={selectedEventType}
+        settings={settings}
+        year={year}
+        month={month}
+        selectedDate={selectedDate}
+        onDateSelect={onDateSelect}
+      />
     </div>
   )
 }

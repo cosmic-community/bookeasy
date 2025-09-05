@@ -1,205 +1,190 @@
 'use client'
 
-import { Booking } from '@/types'
+import { useState, useEffect, Dispatch, SetStateAction } from 'react'
+import { EventType, Settings, Booking } from '@/types'
+import { getAvailableDays, getAvailableTimeSlots, formatTime } from '@/lib/availability'
 
 interface CalendarGridProps {
-  currentDate: Date
-  bookingsByDate: Record<string, Booking[]>
-  onDateClick: (date: Date) => void
-  onBookingClick: (booking: Booking) => void
+  eventType: EventType
+  settings: Settings | null
+  year: number
+  month: number
+  selectedDate: string | null
+  onDateSelect: Dispatch<SetStateAction<string | null>>
 }
 
 export default function CalendarGrid({ 
-  currentDate, 
-  bookingsByDate, 
-  onDateClick, 
-  onBookingClick 
+  eventType, 
+  settings, 
+  year, 
+  month, 
+  selectedDate, 
+  onDateSelect 
 }: CalendarGridProps) {
-  const today = new Date()
-  const currentYear = currentDate.getFullYear()
-  const currentMonth = currentDate.getMonth()
-  
-  // Get first day of month and how many days in month
-  const firstDay = new Date(currentYear, currentMonth, 1)
-  const lastDay = new Date(currentYear, currentMonth + 1, 0)
-  const daysInMonth = lastDay.getDate()
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [availableSlots, setAvailableSlots] = useState<any[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Get available days for the current month
+  const availableDays = getAvailableDays(year, month, eventType, settings)
+
+  // Get first day of month and number of days
+  const firstDay = new Date(year, month, 1)
   const startingDayOfWeek = firstDay.getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
 
-  // Get days from previous month to fill the grid
-  const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate()
-  const prevMonthDays = []
-  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    prevMonthDays.push(prevMonthLastDay - i)
+  // Fetch bookings when month changes
+  useEffect(() => {
+    fetchBookings()
+  }, [year, month])
+
+  // Fetch available time slots when a date is selected
+  useEffect(() => {
+    if (selectedDate) {
+      fetchAvailableSlots(selectedDate)
+    } else {
+      setAvailableSlots([])
+    }
+  }, [selectedDate, eventType, bookings])
+
+  const fetchBookings = async () => {
+    try {
+      const response = await fetch('/api/bookings')
+      if (response.ok) {
+        const data = await response.json()
+        setBookings(data.bookings || [])
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error)
+    }
   }
 
-  // Get days for current month
-  const currentMonthDays = []
-  for (let day = 1; day <= daysInMonth; day++) {
-    currentMonthDays.push(day)
+  const fetchAvailableSlots = async (date: string) => {
+    if (!date) return
+    
+    setLoadingSlots(true)
+    try {
+      // Filter bookings for the selected date
+      const dateBookings = bookings.filter(booking => 
+        booking.metadata?.booking_date === date
+      )
+      
+      // Get available time slots
+      const slots = getAvailableTimeSlots(date, eventType, dateBookings, settings)
+      setAvailableSlots(slots)
+    } catch (error) {
+      console.error('Error getting available slots:', error)
+      setAvailableSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
   }
 
-  // Get days from next month to fill the grid (6 rows × 7 days = 42 total)
-  const totalCells = 42
-  const usedCells = prevMonthDays.length + currentMonthDays.length
-  const nextMonthDays = []
-  for (let day = 1; day <= totalCells - usedCells; day++) {
-    nextMonthDays.push(day)
+  const handleDateClick = (date: string, available: boolean) => {
+    if (!available) return
+    
+    if (selectedDate === date) {
+      onDateSelect(null) // Deselect if clicking the same date
+    } else {
+      onDateSelect(date)
+    }
   }
 
-  const formatDate = (year: number, month: number, day: number): string => {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const handleTimeSlotClick = (time: string) => {
+    if (selectedDate) {
+      // Navigate to booking form with selected date and time
+      // This could be handled by parent component
+      console.log('Selected:', selectedDate, time)
+    }
   }
 
-  const isToday = (year: number, month: number, day: number): boolean => {
-    return (
-      today.getFullYear() === year &&
-      today.getMonth() === month &&
-      today.getDate() === day
+  // Create calendar grid
+  const calendarDays = []
+  
+  // Add empty cells for days before the first day of the month
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    calendarDays.push(
+      <div key={`empty-${i}`} className="p-2 h-12"></div>
     )
   }
 
-  const isPastDate = (year: number, month: number, day: number): boolean => {
-    const date = new Date(year, month, day)
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    return date < todayStart
+  // Add days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const dayInfo = availableDays.find(d => d.date === date)
+    const isAvailable = dayInfo?.available ?? false
+    const isSelected = selectedDate === date
+    const hasBookings = bookings.some(booking => booking.metadata?.booking_date === date)
+
+    calendarDays.push(
+      <div
+        key={day}
+        className={`
+          p-2 h-12 border border-gray-200 cursor-pointer transition-colors relative
+          ${isAvailable ? 'hover:bg-blue-50' : 'bg-gray-50 cursor-not-allowed'}
+          ${isSelected ? 'bg-primary text-white' : ''}
+          ${!isAvailable ? 'text-gray-400' : 'text-gray-900'}
+        `}
+        onClick={() => handleDateClick(date, isAvailable)}
+        title={dayInfo?.reason || ''}
+      >
+        <div className="text-sm font-medium">{day}</div>
+        {hasBookings && (
+          <div className="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+        )}
+      </div>
+    )
   }
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
   return (
-    <div className="calendar-grid">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-gray-200">
-        {dayNames.map(day => (
-          <div key={day} className="p-4 text-center font-medium text-gray-500 bg-gray-50">
-            {day}
-          </div>
-        ))}
+    <div>
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1 mb-6">
+        {calendarDays}
       </div>
 
-      {/* Calendar days */}
-      <div className="grid grid-cols-7">
-        {/* Previous month days */}
-        {prevMonthDays.map(day => {
-          const year = currentMonth === 0 ? currentYear - 1 : currentYear
-          const month = currentMonth === 0 ? 11 : currentMonth - 1
-          const dateKey = formatDate(year, month, day)
-          const dayBookings = bookingsByDate[dateKey] || []
+      {/* Selected Date Time Slots */}
+      {selectedDate && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Available times for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </h3>
 
-          return (
-            <div
-              key={`prev-${day}`}
-              className="calendar-day prev-month"
-            >
-              <span className="day-number">{day}</span>
-              {dayBookings.length > 0 && (
-                <div className="bookings-container">
-                  {dayBookings.slice(0, 2).map(booking => (
-                    <div
-                      key={booking.id}
-                      className="booking-item"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onBookingClick(booking)
-                      }}
-                      title={`${booking.metadata?.attendee_name} - ${booking.metadata?.booking_time}`}
-                    >
-                      {booking.metadata?.booking_time} - {booking.metadata?.attendee_name}
-                    </div>
-                  ))}
-                  {dayBookings.length > 2 && (
-                    <div className="more-bookings">
-                      +{dayBookings.length - 2} more
-                    </div>
-                  )}
-                </div>
-              )}
+          {loadingSlots ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          )
-        })}
-
-        {/* Current month days */}
-        {currentMonthDays.map(day => {
-          const dateKey = formatDate(currentYear, currentMonth, day)
-          const dayBookings = bookingsByDate[dateKey] || []
-          const isCurrentDay = isToday(currentYear, currentMonth, day)
-          const isPast = isPastDate(currentYear, currentMonth, day)
-
-          return (
-            <div
-              key={day}
-              className={`calendar-day current-month ${isCurrentDay ? 'today' : ''} ${isPast ? 'past' : 'future'}`}
-              onClick={() => onDateClick(new Date(currentYear, currentMonth, day))}
-            >
-              <span className="day-number">{day}</span>
-              {dayBookings.length > 0 && (
-                <div className="bookings-container">
-                  {dayBookings.slice(0, 2).map(booking => {
-                    const status = booking.metadata?.status?.key || 'confirmed'
-                    return (
-                      <div
-                        key={booking.id}
-                        className={`booking-item status-${status}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onBookingClick(booking)
-                        }}
-                        title={`${booking.metadata?.attendee_name} - ${booking.metadata?.booking_time}`}
-                      >
-                        {booking.metadata?.booking_time} - {booking.metadata?.attendee_name}
-                      </div>
-                    )
-                  })}
-                  {dayBookings.length > 2 && (
-                    <div className="more-bookings">
-                      +{dayBookings.length - 2} more
-                    </div>
-                  )}
-                </div>
-              )}
+          ) : availableSlots.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {availableSlots.map((slot) => (
+                <button
+                  key={slot.time}
+                  onClick={() => slot.available && handleTimeSlotClick(slot.time)}
+                  disabled={!slot.available}
+                  className={`
+                    p-3 text-sm font-medium rounded-lg border transition-colors
+                    ${slot.available
+                      ? 'border-primary text-primary hover:bg-primary hover:text-white'
+                      : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                    }
+                  `}
+                  title={slot.reason || ''}
+                >
+                  {formatTime(slot.time)}
+                </button>
+              ))}
             </div>
-          )
-        })}
-
-        {/* Next month days */}
-        {nextMonthDays.map(day => {
-          const year = currentMonth === 11 ? currentYear + 1 : currentYear
-          const month = currentMonth === 11 ? 0 : currentMonth + 1
-          const dateKey = formatDate(year, month, day)
-          const dayBookings = bookingsByDate[dateKey] || []
-
-          return (
-            <div
-              key={`next-${day}`}
-              className="calendar-day next-month"
-            >
-              <span className="day-number">{day}</span>
-              {dayBookings.length > 0 && (
-                <div className="bookings-container">
-                  {dayBookings.slice(0, 2).map(booking => (
-                    <div
-                      key={booking.id}
-                      className="booking-item"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onBookingClick(booking)
-                      }}
-                      title={`${booking.metadata?.attendee_name} - ${booking.metadata?.booking_time}`}
-                    >
-                      {booking.metadata?.booking_time} - {booking.metadata?.attendee_name}
-                    </div>
-                  ))}
-                  {dayBookings.length > 2 && (
-                    <div className="more-bookings">
-                      +{dayBookings.length - 2} more
-                    </div>
-                  )}
-                </div>
-              )}
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>No available time slots for this date.</p>
             </div>
-          )
-        })}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
