@@ -5,9 +5,10 @@ import { Booking } from '@/types'
 
 interface BookingsListProps {
   bookings: Booking[]
+  onBookingUpdated?: (booking: Booking) => void
 }
 
-export default function BookingsList({ bookings: initialBookings }: BookingsListProps) {
+export default function BookingsList({ bookings: initialBookings, onBookingUpdated }: BookingsListProps) {
   const [bookings, setBookings] = useState(initialBookings)
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
 
@@ -35,6 +36,11 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
           booking.id === bookingId ? updatedBooking : booking
         )
       )
+
+      // Call the parent callback if provided
+      if (onBookingUpdated) {
+        onBookingUpdated(updatedBooking)
+      }
     } catch (error) {
       console.error('Error updating booking status:', error)
       alert(error instanceof Error ? error.message : 'Failed to update booking status')
@@ -48,6 +54,11 @@ export default function BookingsList({ bookings: initialBookings }: BookingsList
     if (!status) return { key: 'unknown', value: 'Unknown' }
     if (typeof status === 'string') return { key: status, value: status }
     return status
+  }
+
+  // Update bookings when props change
+  if (initialBookings !== bookings && JSON.stringify(initialBookings) !== JSON.stringify(bookings)) {
+    setBookings(initialBookings)
   }
 
   if (!bookings || bookings.length === 0) {
