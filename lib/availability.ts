@@ -110,7 +110,7 @@ export function getAvailableDays(
     // Fix: Safely handle the date string conversion with proper type safety
     const isoString = date.toISOString()
     const dateParts = isoString.split('T')
-    const dateString: string = dateParts[0] || `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    const dateString: string = dateParts[0] ?? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     
     days.push({
       date: dateString,
