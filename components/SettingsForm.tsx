@@ -11,7 +11,7 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
   const [formData, setFormData] = useState({
     site_name: settings?.metadata?.site_name || 'BookEasy',
     buffer_time: settings?.metadata?.buffer_time || 15,
-    email_notifications: settings?.metadata?.email_notifications || true,
+    email_notifications: settings?.metadata?.email_notifications ?? true,
     // New availability settings
     default_start_time: '09:00',
     default_end_time: '17:00',
