@@ -169,26 +169,26 @@ export function getAvailableTimeSlots(
     // Check for conflicts with existing bookings
     if (available) {
       for (const booking of existingBookings) {
-        if (booking.metadata?.booking_date === date && booking.metadata?.booking_time) {
-          // Fix: Safely get booking_time with proper undefined check
-          const bookingTime = booking.metadata.booking_time
-          if (bookingTime) {
-            const bookingMinutes = timeToMinutes(bookingTime)
-            const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
-            const bookingEndMinutes = bookingMinutes + bookingDuration
-            
-            // Add buffer time to existing booking
-            const bufferedStartMinutes = bookingMinutes - bufferTime
-            const bufferedEndMinutes = bookingEndMinutes + bufferTime
-            
-            // Check if new slot overlaps with buffered existing booking
-            if ((minutes >= bufferedStartMinutes && minutes < bufferedEndMinutes) ||
-                (slotEndMinutes > bufferedStartMinutes && slotEndMinutes <= bufferedEndMinutes) ||
-                (minutes <= bufferedStartMinutes && slotEndMinutes >= bufferedEndMinutes)) {
-              available = false
-              reason = 'Time slot unavailable'
-              break
-            }
+        // Fix: Add proper null/undefined checks for booking date and time
+        const bookingDate = booking.metadata?.booking_date
+        const bookingTime = booking.metadata?.booking_time
+        
+        if (bookingDate === date && bookingTime) {
+          const bookingMinutes = timeToMinutes(bookingTime)
+          const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
+          const bookingEndMinutes = bookingMinutes + bookingDuration
+          
+          // Add buffer time to existing booking
+          const bufferedStartMinutes = bookingMinutes - bufferTime
+          const bufferedEndMinutes = bookingEndMinutes + bufferTime
+          
+          // Check if new slot overlaps with buffered existing booking
+          if ((minutes >= bufferedStartMinutes && minutes < bufferedEndMinutes) ||
+              (slotEndMinutes > bufferedStartMinutes && slotEndMinutes <= bufferedEndMinutes) ||
+              (minutes <= bufferedStartMinutes && slotEndMinutes >= bufferedEndMinutes)) {
+            available = false
+            reason = 'Time slot unavailable'
+            break
           }
         }
       }
