@@ -162,8 +162,8 @@ export function getAvailableTimeSlots(
     if (available) {
       for (const booking of existingBookings) {
         if (booking.metadata?.booking_date === date) {
-          const bookingTime = booking.metadata?.booking_time || ''
-          if (bookingTime) {
+          const bookingTime = booking.metadata?.booking_time
+          if (bookingTime) {  // Fixed: Added null check for bookingTime
             const bookingMinutes = timeToMinutes(bookingTime)
             const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
             const bookingEndMinutes = bookingMinutes + bookingDuration

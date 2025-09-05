@@ -1,78 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { EventType, Settings } from '@/types'
+import { formatTime, formatDate } from '@/lib/availability'
 
 interface BookingFormProps {
   eventType: EventType
+  date: string  // Fixed: Changed from selectedDate to match usage
+  time: string  // Fixed: Changed from selectedTime to match usage  
+  onSuccess: () => void
   settings: Settings | null
 }
 
-export default function BookingForm({ eventType, settings }: BookingFormProps) {
+export default function BookingForm({ eventType, date, time, onSuccess, settings }: BookingFormProps) {
   const [formData, setFormData] = useState({
     attendee_name: '',
     attendee_email: '',
-    booking_date: '',
-    booking_time: '',
     notes: ''
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [availableSlots, setAvailableSlots] = useState<string[]>([])
-
-  // Generate time slots based on event type or settings
-  const generateTimeSlots = () => {
-    const slots = []
-    const startTime = eventType.metadata?.start_time || settings?.metadata?.default_start_time || '09:00'
-    const endTime = eventType.metadata?.end_time || settings?.metadata?.default_end_time || '17:00'
-    const duration = eventType.metadata?.duration || 30
-    const bufferTime = settings?.metadata?.buffer_time || 0
-    
-    // Parse start time with proper validation
-    const startTimeParts = startTime.split(':')
-    const startHour = startTimeParts[0] ? Number(startTimeParts[0]) : 9
-    const startMinute = startTimeParts[1] ? Number(startTimeParts[1]) : 0
-    
-    // Parse end time with proper validation
-    const endTimeParts = endTime.split(':')
-    const endHour = endTimeParts[0] ? Number(endTimeParts[0]) : 17
-    const endMinute = endTimeParts[1] ? Number(endTimeParts[1]) : 0
-    
-    const startMinutes = startHour * 60 + startMinute
-    const endMinutes = endHour * 60 + endMinute
-    const totalSlotTime = duration + bufferTime
-    
-    for (let minutes = startMinutes; minutes + duration <= endMinutes; minutes += totalSlotTime) {
-      const hour = Math.floor(minutes / 60)
-      const minute = minutes % 60
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      slots.push(timeString)
-    }
-    
-    return slots
-  }
-
-  // Load available slots when date changes
-  useEffect(() => {
-    if (formData.booking_date) {
-      // Check if selected date is an available day for this event type
-      const selectedDate = new Date(formData.booking_date)
-      const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' })
-      const availableDays = eventType.metadata?.available_days || settings?.metadata?.default_available_days || []
-      
-      if (availableDays.includes(dayName)) {
-        const slots = generateTimeSlots()
-        // TODO: Filter out already booked slots by fetching existing bookings for this date
-        setAvailableSlots(slots)
-      } else {
-        setAvailableSlots([])
-      }
-    } else {
-      setAvailableSlots([])
-    }
-  }, [formData.booking_date, eventType, settings])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,8 +34,12 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
-          event_type_id: eventType.id
+          event_type_id: eventType.id,
+          attendee_name: formData.attendee_name,
+          attendee_email: formData.attendee_email,
+          booking_date: date,
+          booking_time: time,
+          notes: formData.notes
         })
       })
 
@@ -96,14 +48,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
         throw new Error(errorData.error || 'Failed to create booking')
       }
 
-      setIsSuccess(true)
-      setFormData({
-        attendee_name: '',
-        attendee_email: '',
-        booking_date: '',
-        booking_time: '',
-        notes: ''
-      })
+      onSuccess()
     } catch (error) {
       console.error('Error creating booking:', error)
       setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
@@ -112,55 +57,41 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     }
   }
 
-  // Calculate minimum and maximum booking dates based on settings
-  const getDateLimits = () => {
-    const today = new Date()
-    const minimumNoticeHours = settings?.metadata?.minimum_notice_hours || 24
-    const bookingWindowDays = settings?.metadata?.booking_window_days || 30
-    
-    // Minimum date (today + minimum notice)
-    const minDate = new Date(today.getTime() + (minimumNoticeHours * 60 * 60 * 1000))
-    
-    // Maximum date (today + booking window)
-    const maxDate = new Date(today.getTime() + (bookingWindowDays * 24 * 60 * 60 * 1000))
-    
-    return {
-      min: minDate.toISOString().split('T')[0],
-      max: maxDate.toISOString().split('T')[0]
-    }
-  }
-
-  const { min: minDate, max: maxDate } = getDateLimits()
-
-  if (isSuccess) {
-    return (
-      <div className="max-w-md mx-auto">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-          <svg className="w-12 h-12 text-green-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          <h2 className="text-xl font-semibold text-green-900 mb-2">
-            Booking Confirmed!
-          </h2>
-          <p className="text-green-800 mb-4">
-            Your meeting has been scheduled successfully. You'll receive a confirmation email shortly.
+  return (
+    <div>
+      {/* Booking Summary */}
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 className="font-semibold text-gray-900 mb-2">
+          {eventType.metadata?.event_name || eventType.title}
+        </h3>
+        <div className="text-sm text-gray-600 space-y-1">
+          <p className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {formatDate(date)}
           </p>
-          <button
-            onClick={() => setIsSuccess(false)}
-            className="btn btn-primary"
-          >
-            Book Another Meeting
-          </button>
+          <p className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {formatTime(time)} ({eventType.metadata?.duration || 30} minutes)
+          </p>
+          {settings?.metadata?.timezone && (
+            <p className="flex items-center">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {settings.metadata.timezone}
+            </p>
+          )}
         </div>
       </div>
-    )
-  }
 
-  return (
-    <div className="max-w-md mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Booking Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-1">
             Your Name *
           </label>
           <input
@@ -175,7 +106,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
         </div>
 
         <div>
-          <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-1">
             Email Address *
           </label>
           <input
@@ -190,58 +121,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
         </div>
 
         <div>
-          <label htmlFor="booking_date" className="block text-sm font-medium text-gray-700 mb-2">
-            Preferred Date *
-          </label>
-          <input
-            type="date"
-            id="booking_date"
-            required
-            className="input"
-            value={formData.booking_date}
-            onChange={(e) => setFormData({ ...formData, booking_date: e.target.value, booking_time: '' })}
-            min={minDate}
-            max={maxDate}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Available days: {(eventType.metadata?.available_days || settings?.metadata?.default_available_days || []).join(', ')}
-          </p>
-        </div>
-
-        {formData.booking_date && (
-          <div>
-            <label htmlFor="booking_time" className="block text-sm font-medium text-gray-700 mb-2">
-              Preferred Time *
-            </label>
-            {availableSlots.length > 0 ? (
-              <select
-                id="booking_time"
-                required
-                className="select"
-                value={formData.booking_time}
-                onChange={(e) => setFormData({ ...formData, booking_time: e.target.value })}
-              >
-                <option value="">Select a time</option>
-                {availableSlots.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {new Date(`2000-01-01T${slot}`).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
-                No available time slots for this date. Please select a different date.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
             Additional Notes
           </label>
           <textarea
@@ -267,7 +147,7 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
 
         <button
           type="submit"
-          disabled={isSubmitting || !formData.booking_time}
+          disabled={isSubmitting}
           className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
@@ -276,18 +156,15 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Scheduling...
+              Confirming...
             </span>
           ) : (
-            `Schedule ${eventType.metadata?.event_name || 'Meeting'}`
+            'Confirm Booking'
           )}
         </button>
 
         <p className="text-xs text-gray-500 text-center">
-          By booking this meeting, you agree to receive email confirmations and reminders.
-          {settings?.metadata?.timezone && (
-            <><br />All times are in {settings.metadata.timezone}.</>
-          )}
+          By confirming, you'll receive email notifications about your booking.
         </p>
       </form>
     </div>
