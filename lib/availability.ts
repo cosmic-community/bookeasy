@@ -156,6 +156,11 @@ export function getAvailableDays(
     const dayName = getDayName(currentDate)
     const dateStr = currentDate.toISOString().split('T')[0]
     
+    // Ensure we have a valid dateStr before proceeding
+    if (!dateStr) {
+      continue
+    }
+    
     const available = isDateAvailable(currentDate, eventType)
     
     days.push({
@@ -191,14 +196,15 @@ export function generateCalendarData(
   
   while (currentDate <= endDate) {
     const dayName = getDayName(currentDate)
+    const dateStr = currentDate.toISOString().split('T')[0]
     
-    // Ensure dayName is defined before using it
-    if (dayName) {
+    // Ensure dayName is defined and dateStr is valid before using them
+    if (dayName && dateStr) {
       days.push({
-        date: currentDate.toISOString().split('T')[0],
+        date: dateStr,
         dayName,
         available: true,
-        reason: dayName ? undefined : 'Invalid day name'
+        reason: undefined
       })
     }
     
@@ -288,6 +294,9 @@ export function getBookingsForDate(bookings: Booking[], dateStr: string): Bookin
     
     const bookingDateObj = new Date(bookingDate)
     const bookingDateStr = bookingDateObj.toISOString().split('T')[0]
+    
+    // Ensure both dateStr values are valid before comparison
+    if (!bookingDateStr || !dateStr) return false
     
     return bookingDateStr === dateStr
   })
