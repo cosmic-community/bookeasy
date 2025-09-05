@@ -188,7 +188,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
           {calendarDays.map((day, index) => (
             <button
               key={index}
-              onClick={() => day.isAvailable ? handleDateClick(day.date) : undefined}
+              onClick={() => day.isAvailable && day.date ? handleDateClick(day.date) : undefined}
               disabled={!day.isAvailable}
               className={`
                 p-2 text-sm aspect-square flex items-center justify-center rounded-lg transition-colors
