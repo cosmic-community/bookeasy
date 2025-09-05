@@ -42,7 +42,7 @@ export default async function HomePage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
                 🌟 Featured Meeting Types
               </h2>
-              <EventTypeGrid eventTypes={featuredEventTypes} />
+              <EventTypeGrid eventTypes={featuredEventTypes} isFeatured={true} />
             </div>
           </section>
         )}
