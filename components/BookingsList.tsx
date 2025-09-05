@@ -1,241 +1,215 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Booking } from '@/types'
-import { formatDate, formatTime } from '@/lib/availability'
-import BookingFormModal from './BookingFormModal'
+import { formatTime, formatDate } from '@/lib/availability'
 
-interface BookingsListProps {
+export interface BookingsListProps {
   bookings: Booking[]
   onBookingUpdate: (updatedBooking: Booking) => void
 }
 
 export default function BookingsList({ bookings, onBookingUpdate }: BookingsListProps) {
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set())
 
-  // Get unique statuses for filter - Fix Set iteration issue
-  const availableStatuses = useMemo(() => {
-    const statusSet = new Set<string>()
-    bookings.forEach(booking => {
-      const status = booking.metadata?.status
-      if (typeof status === 'string') {
-        statusSet.add(status)
-      } else if (status && typeof status === 'object' && status.value) {
-        statusSet.add(status.value)
-      }
-    })
-    // Convert Set to Array for iteration
-    return Array.from(statusSet)
-  }, [bookings])
+  // Convert Set to Array for iteration to avoid TS2802 error
+  const expandedBookingsArray = Array.from(expandedBookings)
 
-  // Filter bookings based on status
-  const filteredBookings = useMemo(() => {
-    if (statusFilter === 'all') return bookings
+  const filteredBookings = bookings.filter(booking => {
+    if (statusFilter === 'all') return true
     
-    return bookings.filter(booking => {
-      const status = booking.metadata?.status
-      const statusValue = typeof status === 'string' ? status : status?.value
-      return statusValue?.toLowerCase() === statusFilter.toLowerCase()
-    })
-  }, [bookings, statusFilter])
+    const status = booking.metadata?.status
+    if (typeof status === 'string') {
+      return status.toLowerCase() === statusFilter
+    } else if (status && typeof status === 'object' && 'key' in status) {
+      return status.key === statusFilter
+    }
+    return false
+  })
 
-  // Group bookings by date
-  const groupedBookings = useMemo(() => {
-    const groups: { [key: string]: Booking[] } = {}
-    
-    filteredBookings.forEach(booking => {
-      const date = booking.metadata?.booking_date
-      if (date) {
-        if (!groups[date]) {
-          groups[date] = []
-        }
-        groups[date].push(booking)
-      }
-    })
-
-    // Sort groups by date (most recent first)
-    const sortedGroups = Object.keys(groups)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-      .reduce((acc, date) => {
-        acc[date] = groups[date].sort((a, b) => {
-          const timeA = a.metadata?.booking_time || ''
-          const timeB = b.metadata?.booking_time || ''
-          return timeA.localeCompare(timeB)
-        })
-        return acc
-      }, {} as { [key: string]: Booking[] })
-
-    return sortedGroups
-  }, [filteredBookings])
-
-  const handleBookingClick = (booking: Booking) => {
-    setSelectedBooking(booking)
+  const toggleExpanded = (bookingId: string) => {
+    const newExpanded = new Set(expandedBookings)
+    if (newExpanded.has(bookingId)) {
+      newExpanded.delete(bookingId)
+    } else {
+      newExpanded.add(bookingId)
+    }
+    setExpandedBookings(newExpanded)
   }
 
-  const handleModalClose = () => {
-    setSelectedBooking(null)
-  }
+  const updateBookingStatus = async (bookingId: string, newStatus: { key: string; value: string }) => {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
 
-  const handleStatusUpdate = (updatedBooking: Booking) => {
-    onBookingUpdate(updatedBooking)
-    setSelectedBooking(null)
+      if (!response.ok) {
+        throw new Error('Failed to update booking status')
+      }
+
+      const { booking: updatedBooking } = await response.json()
+      onBookingUpdate(updatedBooking)
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+    }
   }
 
   const getStatusColor = (status: string | { key: string; value: string } | undefined) => {
-    const statusValue = typeof status === 'string' ? status : status?.value || ''
+    const statusValue = typeof status === 'string' ? status : status?.value || 'confirmed'
+    const statusKey = typeof status === 'string' ? status.toLowerCase() : status?.key || 'confirmed'
     
-    switch (statusValue.toLowerCase()) {
+    switch (statusKey.toLowerCase()) {
       case 'confirmed':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-green-100 text-green-800'
       case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-red-100 text-red-800'
       case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-blue-100 text-blue-800'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getStatusText = (status: string | { key: string; value: string } | undefined): string => {
-    if (typeof status === 'string') {
-      return status
-    }
-    return status?.value || 'Unknown'
-  }
-
-  if (bookings.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-        <p className="text-gray-500">When people book appointments, they'll appear here.</p>
-      </div>
-    )
-  }
+  const statusOptions = [
+    { key: 'confirmed', value: 'Confirmed' },
+    { key: 'completed', value: 'Completed' },
+    { key: 'cancelled', value: 'Cancelled' }
+  ]
 
   return (
     <div className="space-y-6">
-      {/* Filter Controls */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`px-3 py-1 rounded-full text-sm font-medium border ${
+          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
             statusFilter === 'all'
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              ? 'bg-primary text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           All ({bookings.length})
         </button>
-        {availableStatuses.map(status => {
+        {statusOptions.map((status) => {
           const count = bookings.filter(booking => {
             const bookingStatus = booking.metadata?.status
-            const statusValue = typeof bookingStatus === 'string' ? bookingStatus : bookingStatus?.value
-            return statusValue?.toLowerCase() === status.toLowerCase()
+            if (typeof bookingStatus === 'string') {
+              return bookingStatus.toLowerCase() === status.key
+            } else if (bookingStatus && typeof bookingStatus === 'object' && 'key' in bookingStatus) {
+              return bookingStatus.key === status.key
+            }
+            return false
           }).length
 
           return (
             <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                statusFilter === status
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              key={status.key}
+              onClick={() => setStatusFilter(status.key)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                statusFilter === status.key
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {status} ({count})
+              {status.value} ({count})
             </button>
           )
         })}
       </div>
 
       {/* Bookings List */}
-      {Object.keys(groupedBookings).length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No bookings match the selected filter.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedBookings).map(([date, dateBookings]) => (
-            <div key={date} className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {formatDate(date)}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {dateBookings.length} booking{dateBookings.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {dateBookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    onClick={() => handleBookingClick(booking)}
-                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {booking.metadata?.attendee_name || 'Unknown Attendee'}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate">
-                              {booking.metadata?.attendee_email || 'No email'}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {booking.metadata?.event_type?.metadata?.event_name || 
-                               booking.metadata?.event_type?.title || 'Unknown Event'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatTime(booking.metadata?.booking_time || '')}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {booking.metadata?.event_type?.metadata?.duration || 30}min
-                          </p>
-                        </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(booking.metadata?.status)}`}>
-                          {getStatusText(booking.metadata?.status)}
-                        </span>
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+      <div className="space-y-4">
+        {filteredBookings.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No bookings found for the selected filter.</p>
+          </div>
+        ) : (
+          filteredBookings.map((booking) => {
+            const isExpanded = expandedBookings.has(booking.id)
+            const status = booking.metadata?.status
+            const statusValue = typeof status === 'string' ? status : status?.value || 'Confirmed'
+
+            return (
+              <div key={booking.id} className="card hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="font-semibold text-gray-900">
+                        {booking.metadata?.attendee_name || 'Unknown'}
+                      </h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                        {statusValue}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>📧 {booking.metadata?.attendee_email}</p>
+                      <p>📅 {booking.metadata?.booking_date && formatDate(booking.metadata.booking_date)}</p>
+                      <p>🕒 {booking.metadata?.booking_time && formatTime(booking.metadata.booking_time)}</p>
+                      {booking.metadata?.event_type && (
+                        <p>📋 {typeof booking.metadata.event_type === 'object' && booking.metadata.event_type.title 
+                          ? booking.metadata.event_type.title 
+                          : 'Event Type'}</p>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                  
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={typeof status === 'string' ? status.toLowerCase() : status?.key || 'confirmed'}
+                      onChange={(e) => {
+                        const selectedOption = statusOptions.find(opt => opt.key === e.target.value)
+                        if (selectedOption) {
+                          updateBookingStatus(booking.id, selectedOption)
+                        }
+                      }}
+                      className="text-sm border border-gray-200 rounded px-2 py-1 bg-white"
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.value}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <button
+                      onClick={() => toggleExpanded(booking.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      {isExpanded ? '▲' : '▼'}
+                    </button>
+                  </div>
+                </div>
 
-      {/* Booking Details Modal */}
-      {selectedBooking && (
-        <BookingFormModal
-          booking={selectedBooking}
-          onClose={handleModalClose}
-          onStatusUpdate={handleStatusUpdate}
-        />
-      )}
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Booking Details</h4>
+                        <p><strong>Created:</strong> {new Date(booking.created_at).toLocaleDateString()}</p>
+                        <p><strong>ID:</strong> {booking.id}</p>
+                        <p><strong>Slug:</strong> {booking.slug}</p>
+                      </div>
+                      
+                      {booking.metadata?.notes && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+                          <p className="text-gray-600">{booking.metadata.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }
