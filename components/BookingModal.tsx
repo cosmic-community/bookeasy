@@ -44,7 +44,8 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Date not available'
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -54,7 +55,8 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
     })
   }
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString: string | undefined) => {
+    if (!timeString) return 'Time not available'
     const [hours, minutes] = timeString.split(':')
     const date = new Date()
     date.setHours(parseInt(hours, 10), parseInt(minutes, 10))
@@ -141,7 +143,7 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
                 Date
               </label>
               <p className="text-gray-900">
-                {booking.metadata.booking_date && formatDate(booking.metadata.booking_date)}
+                {formatDate(booking.metadata.booking_date)}
               </p>
             </div>
             <div>
@@ -149,7 +151,7 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
                 Time
               </label>
               <p className="text-gray-900">
-                {booking.metadata.booking_time && formatTime(booking.metadata.booking_time)}
+                {formatTime(booking.metadata.booking_time)}
               </p>
             </div>
           </div>

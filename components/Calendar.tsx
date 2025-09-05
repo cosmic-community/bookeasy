@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { EventType, Booking, Settings } from '@/types'
 import { getAvailableDays, getAvailableTimeSlots, TimeSlot } from '@/lib/availability'
 import CalendarGrid from './CalendarGrid'
-import BookingModal from './BookingModal'
+import BookingFormModal from './BookingFormModal'
 
 interface CalendarProps {
   eventType: EventType
@@ -204,7 +204,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
 
       {/* Booking Modal */}
       {showBookingModal && selectedDate && selectedTime && (
-        <BookingModal
+        <BookingFormModal
           eventType={eventType}
           date={selectedDate}
           time={selectedTime}
