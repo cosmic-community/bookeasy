@@ -15,7 +15,14 @@ export interface AvailableDay {
 
 // Helper function to convert time string to minutes since midnight
 function timeToMinutes(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number)
+  if (!timeStr) return 0
+  
+  const parts = timeStr.split(':')
+  const hours = parts[0] ? parseInt(parts[0], 10) : 0
+  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
+  
+  if (isNaN(hours) || isNaN(minutes)) return 0
+  
   return hours * 60 + minutes
 }
 
@@ -40,10 +47,16 @@ export function isDateWithinBookingWindow(date: Date, settings: Settings | null)
 // Check if a date meets minimum notice requirements
 export function isDateWithinMinimumNotice(date: Date, time: string, settings: Settings | null): boolean {
   if (!settings?.metadata?.minimum_notice_hours) return true
+  if (!time) return false
   
   const now = new Date()
   const bookingDateTime = new Date(date)
-  const [hours, minutes] = time.split(':').map(Number)
+  const parts = time.split(':')
+  const hours = parts[0] ? parseInt(parts[0], 10) : 0
+  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
+  
+  if (isNaN(hours) || isNaN(minutes)) return false
+  
   bookingDateTime.setHours(hours, minutes, 0, 0)
   
   const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
@@ -115,12 +128,15 @@ export function getAvailableTimeSlots(
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
   
-  if (!eventType.metadata?.start_time || !eventType.metadata?.end_time) {
+  const startTime = eventType.metadata?.start_time
+  const endTime = eventType.metadata?.end_time
+  
+  if (!startTime || !endTime) {
     return slots
   }
   
-  const startMinutes = timeToMinutes(eventType.metadata.start_time)
-  const endMinutes = timeToMinutes(eventType.metadata.end_time)
+  const startMinutes = timeToMinutes(startTime)
+  const endMinutes = timeToMinutes(endTime)
   const duration = eventType.metadata?.duration ?? 30
   const bufferTime = settings?.metadata?.buffer_time ?? 0
   
@@ -185,7 +201,14 @@ export function getAvailableTimeSlots(
 
 // Format time for display (convert 24h to 12h format)
 export function formatTime(time: string): string {
-  const [hours, minutes] = time.split(':').map(Number)
+  if (!time) return ''
+  
+  const parts = time.split(':')
+  const hours = parts[0] ? parseInt(parts[0], 10) : 0
+  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
+  
+  if (isNaN(hours) || isNaN(minutes)) return time
+  
   const period = hours >= 12 ? 'PM' : 'AM'
   const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
   
@@ -194,10 +217,16 @@ export function formatTime(time: string): string {
 
 // Format date for display
 export function formatDate(date: string): string {
-  return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  if (!date) return ''
+  
+  try {
+    return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch {
+    return date
+  }
 }

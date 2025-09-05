@@ -1,81 +1,74 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { EventType, Settings } from '@/types'
-import { getAvailableDays, AvailableDay } from '@/lib/availability'
+import CalendarGrid from './CalendarGrid'
 
 interface CalendarProps {
-  eventType: EventType
+  eventTypes: EventType[]
   settings: Settings | null
-  selectedDate: string | null
-  onDateSelect: (date: string | null) => void
 }
 
-export default function Calendar({ eventType, settings, selectedDate, onDateSelect }: CalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  
-  const year = currentMonth.getFullYear()
-  const month = currentMonth.getMonth()
-  
-  const availableDays = getAvailableDays(year, month, eventType, settings)
-  
+export default function Calendar({ eventTypes, settings }: CalendarProps) {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedEventType, setSelectedEventType] = useState<EventType | null>(
+    eventTypes.length > 0 ? eventTypes[0] : null
+  )
+
+  // Update selected event type when eventTypes change
+  useEffect(() => {
+    if (eventTypes.length > 0 && !selectedEventType) {
+      setSelectedEventType(eventTypes[0])
+    }
+  }, [eventTypes, selectedEventType])
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+  }
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ]
-  
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  
-  // Get first day of month and number of days
-  const firstDay = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  
-  // Generate calendar grid
-  const calendarDays: (AvailableDay | null)[] = []
-  
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < firstDay; i++) {
-    calendarDays.push(null)
-  }
-  
-  // Add days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const availableDay = availableDays.find(d => {
-      const dayNum = new Date(d.date).getDate()
-      return dayNum === day
-    })
-    calendarDays.push(availableDay || null)
-  }
-  
-  const goToPreviousMonth = () => {
-    setCurrentMonth(new Date(year, month - 1, 1))
-  }
-  
-  const goToNextMonth = () => {
-    setCurrentMonth(new Date(year, month + 1, 1))
-  }
-  
-  const handleDateClick = (availableDay: AvailableDay) => {
-    if (!availableDay.available) return
-    
-    if (selectedDate === availableDay.date) {
-      onDateSelect(null) // Deselect if clicking the same date
-    } else {
-      onDateSelect(availableDay.date)
-    }
-  }
-  
-  const isToday = (date: string) => {
-    const today = new Date().toISOString().split('T')[0]
-    return date === today
-  }
-  
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
+    <div className="card">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          📅 Available Times
+        </h3>
+        
+        {eventTypes.length > 1 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Event Type
+            </label>
+            <select
+              className="select text-sm"
+              value={selectedEventType?.id || ''}
+              onChange={(e) => {
+                const eventType = eventTypes.find(et => et.id === e.target.value)
+                setSelectedEventType(eventType || null)
+              }}
+            >
+              {eventTypes.map((eventType) => (
+                <option key={eventType.id} value={eventType.id}>
+                  {eventType.metadata?.event_name || eventType.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       {/* Calendar Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between mb-4">
         <button
-          onClick={goToPreviousMonth}
+          onClick={handlePrevMonth}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           aria-label="Previous month"
         >
@@ -84,12 +77,12 @@ export default function Calendar({ eventType, settings, selectedDate, onDateSele
           </svg>
         </button>
         
-        <h2 className="text-lg font-semibold text-gray-900">
-          {monthNames[month]} {year}
-        </h2>
+        <h4 className="font-medium text-gray-900">
+          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+        </h4>
         
         <button
-          onClick={goToNextMonth}
+          onClick={handleNextMonth}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           aria-label="Next month"
         >
@@ -98,66 +91,30 @@ export default function Calendar({ eventType, settings, selectedDate, onDateSele
           </svg>
         </button>
       </div>
-      
+
       {/* Calendar Grid */}
-      <div className="p-4">
-        {/* Week day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {weekDays.map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-              {day}
-            </div>
-          ))}
+      {selectedEventType ? (
+        <CalendarGrid
+          year={currentDate.getFullYear()}
+          month={currentDate.getMonth()}
+          eventType={selectedEventType}
+          settings={settings}
+        />
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          <p>No event types available</p>
         </div>
-        
-        {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day, index) => (
-            <div key={index} className="aspect-square">
-              {day ? (
-                <button
-                  onClick={() => handleDateClick(day)}
-                  disabled={!day.available}
-                  className={`w-full h-full flex items-center justify-center text-sm rounded-lg border transition-all duration-200 ${
-                    day.available
-                      ? selectedDate === day.date
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                        : isToday(day.date)
-                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                        : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                      : 'bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed'
-                  }`}
-                  title={day.available ? `Available on ${day.dayName}` : day.reason}
-                >
-                  {new Date(day.date).getDate()}
-                </button>
-              ) : (
-                <div className="w-full h-full"></div>
-              )}
-            </div>
-          ))}
+      )}
+
+      {/* Calendar Legend */}
+      <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-600">
+        <div className="flex items-center">
+          <div className="w-3 h-3 bg-primary rounded mr-2"></div>
+          <span>Available</span>
         </div>
-      </div>
-      
-      {/* Legend */}
-      <div className="px-4 pb-4 border-t border-gray-100">
-        <div className="flex items-center justify-center space-x-6 text-xs text-gray-500">
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-blue-600 rounded"></div>
-            <span>Selected</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-blue-50 border border-blue-200 rounded"></div>
-            <span>Today</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-white border border-gray-200 rounded"></div>
-            <span>Available</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-gray-50 border border-gray-100 rounded"></div>
-            <span>Unavailable</span>
-          </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 bg-gray-200 rounded mr-2"></div>
+          <span>Unavailable</span>
         </div>
       </div>
     </div>
