@@ -61,8 +61,12 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     }
 
     const slots: string[] = []
-    const start = new Date(`2000-01-01T${startTime}:00`)
-    const end = new Date(`2000-01-01T${endTime}:00`)
+    // Fix: Ensure startTime and endTime are defined strings before using in Date constructor
+    const safeStartTime = startTime || '09:00'
+    const safeEndTime = endTime || '17:00'
+    
+    const start = new Date(`2000-01-01T${safeStartTime}:00`)
+    const end = new Date(`2000-01-01T${safeEndTime}:00`)
     
     while (start < end) {
       const timeString = start.toTimeString().slice(0, 5)
@@ -98,17 +102,20 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
       date.setDate(today.getDate() + i)
       
       const dateString = date.toISOString().split('T')[0]
-      const available = isDateAvailable(dateString)
-      
-      dates.push({
-        date: dateString,
-        label: date.toLocaleDateString('en-US', { 
-          weekday: 'short', 
-          month: 'short', 
-          day: 'numeric' 
-        }),
-        available
-      })
+      // Fix: Handle potential undefined dateString
+      if (dateString) {
+        const available = isDateAvailable(dateString)
+        
+        dates.push({
+          date: dateString,
+          label: date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          available
+        })
+      }
     }
     
     return dates
@@ -121,8 +128,9 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     setIsSubmitting(true)
     setError('')
 
-    // Final validation
-    if (!isDateAvailable(formData.booking_date)) {
+    // Final validation - Fix: Ensure formData.booking_date is a string before validation
+    const selectedDate = formData.booking_date
+    if (!selectedDate || !isDateAvailable(selectedDate)) {
       setError('Selected date is not available. Please choose an available date.')
       setIsSubmitting(false)
       return
