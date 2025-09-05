@@ -1,9 +1,8 @@
 'use client'
 
 import { Booking } from '@/types'
-import { AvailableDay } from '@/lib/availability'
 
-interface CalendarGridProps {
+export interface CalendarGridProps {
   bookings: Booking[]
   currentMonth: Date
   selectedDate: string

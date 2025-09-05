@@ -248,7 +248,7 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
         )}
       </div>
 
-      {/* Booking Form Modal */}
+      {/* Booking Form Modal - Add null check for selectedDate and selectedTime */}
       {showBookingForm && selectedDate && selectedTime && (
         <BookingFormModal
           eventType={eventType}
