@@ -1,234 +1,209 @@
-import { EventType, Booking, Settings } from '@/types'
+import { EventType, Booking } from '@/types'
 
-export interface TimeSlot {
-  time: string
-  available: boolean
-  reason?: string
+// Days of the week constants
+export const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday', 
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+] as const
+
+export type DayOfWeek = typeof DAYS_OF_WEEK[number]
+
+// Get day name from date
+export function getDayName(date: Date): string {
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
 }
 
-export interface AvailableDay {
-  date: string
-  dayName: string
-  available: boolean
-  reason?: string
-}
-
-// Helper function to convert time string to minutes since midnight
-function timeToMinutes(timeStr: string | undefined): number {
-  if (!timeStr) return 0
+// Check if a date is available for booking
+export function isDateAvailable(
+  date: Date,
+  eventType: EventType,
+  existingBookings: Booking[] = []
+): boolean {
+  const dayName = getDayName(date)
   
-  const parts = timeStr.split(':')
-  const hours = parts[0] ? parseInt(parts[0], 10) : 0
-  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
-  
-  if (isNaN(hours) || isNaN(minutes)) return 0
-  
-  return hours * 60 + minutes
-}
-
-// Helper function to convert minutes to time string
-function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
-}
-
-// Check if a date is within the booking window
-export function isDateWithinBookingWindow(date: Date, settings: Settings | null): boolean {
-  if (!settings?.metadata?.booking_window_days) return true
-  
-  const today = new Date()
-  const maxDate = new Date(today)
-  maxDate.setDate(today.getDate() + settings.metadata.booking_window_days)
-  
-  return date <= maxDate
-}
-
-// Check if a date meets minimum notice requirements
-export function isDateWithinMinimumNotice(date: Date, time: string, settings: Settings | null): boolean {
-  if (!settings?.metadata?.minimum_notice_hours || !time) return true
-  
-  const now = new Date()
-  const bookingDateTime = new Date(date)
-  const parts = time.split(':')
-  const hours = parts[0] ? parseInt(parts[0], 10) : 0
-  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
-  
-  if (isNaN(hours) || isNaN(minutes)) return false
-  
-  bookingDateTime.setHours(hours, minutes, 0, 0)
-  
-  const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-  
-  return hoursUntilBooking >= settings.metadata.minimum_notice_hours
-}
-
-// Check if a specific day is available for an event type
-export function isDayAvailable(date: Date, eventType: EventType): boolean {
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const dayName = dayNames[date.getDay()]
-  
-  return eventType.metadata?.available_days?.includes(dayName) ?? false
-}
-
-// Get available days for a given month and event type
-export function getAvailableDays(
-  year: number, 
-  month: number, 
-  eventType: EventType, 
-  settings: Settings | null
-): AvailableDay[] {
-  const days: AvailableDay[] = []
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day)
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const dayName = dayNames[date.getDay()]
-    
-    let available = true
-    let reason = ''
-    
-    // Check if date is in the past
-    if (date < today) {
-      available = false
-      reason = 'Past date'
-    }
-    // Check if day is in event type's available days
-    else if (!isDayAvailable(date, eventType)) {
-      available = false
-      reason = 'Not an available day'
-    }
-    // Check booking window
-    else if (!isDateWithinBookingWindow(date, settings)) {
-      available = false
-      reason = 'Outside booking window'
-    }
-    
-    // Fix: Safely handle the date string conversion with proper type safety
-    const isoString = date.toISOString()
-    const dateParts = isoString.split('T')
-    const dateString: string = dateParts[0] ?? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    
-    days.push({
-      date: dateString,
-      dayName,
-      available,
-      reason: available ? undefined : reason
-    })
+  // Validate dayName is defined before using it
+  if (!dayName) {
+    return false
   }
   
-  return days
+  // Check if the day is in the available days for this event type
+  const isAvailableDay = eventType.metadata?.available_days?.includes(dayName) ?? false
+  
+  if (!isAvailableDay) {
+    return false
+  }
+  
+  // Check if date is not in the past
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const targetDate = new Date(date)
+  targetDate.setHours(0, 0, 0, 0)
+  
+  if (targetDate < today) {
+    return false
+  }
+  
+  return true
 }
 
-// Get available time slots for a specific date and event type
+// Generate available time slots for a given date and event type
 export function getAvailableTimeSlots(
-  date: string,
+  date: Date,
   eventType: EventType,
-  existingBookings: Booking[],
-  settings: Settings | null
-): TimeSlot[] {
-  const slots: TimeSlot[] = []
+  existingBookings: Booking[] = [],
+  bufferMinutes: number = 15
+): string[] {
+  const dayName = getDayName(date)
   
-  // Fix: Provide safe default values and handle undefined cases properly
-  const startTime = eventType.metadata?.start_time ?? '09:00'
-  const endTime = eventType.metadata?.end_time ?? '17:00'
+  // Validate dayName is defined before proceeding
+  if (!dayName) {
+    return []
+  }
   
-  const startMinutes = timeToMinutes(startTime)
-  const endMinutes = timeToMinutes(endTime)
-  const duration = eventType.metadata?.duration ?? 30
-  const bufferTime = settings?.metadata?.buffer_time ?? 0
+  // Check if date is available
+  if (!isDateAvailable(date, eventType, existingBookings)) {
+    return []
+  }
   
-  // Generate time slots in 30-minute intervals
-  const slotInterval = 30
+  const startTime = eventType.metadata?.start_time || '09:00'
+  const endTime = eventType.metadata?.end_time || '17:00'
+  const duration = eventType.metadata?.duration || 30
   
-  for (let minutes = startMinutes; minutes < endMinutes; minutes += slotInterval) {
-    const timeStr = minutesToTime(minutes)
-    const slotEndMinutes = minutes + duration
+  // Parse start and end times
+  const [startHour, startMinute] = startTime.split(':').map(Number)
+  const [endHour, endMinute] = endTime.split(':').map(Number)
+  
+  const startMinutes = startHour * 60 + startMinute
+  const endMinutes = endHour * 60 + endMinute
+  
+  const slots: string[] = []
+  
+  // Generate time slots
+  for (let minutes = startMinutes; minutes + duration <= endMinutes; minutes += duration + bufferMinutes) {
+    const hour = Math.floor(minutes / 60)
+    const minute = minutes % 60
+    const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
     
-    // Skip if slot would extend past end time
-    if (slotEndMinutes > endMinutes) {
-      continue
-    }
-    
-    let available = true
-    let reason = ''
-    
-    // Check minimum notice - Fix: Properly handle the time string with explicit type annotation
-    const slotDate = new Date(`${date}T${timeStr}`)
-    if (!isDateWithinMinimumNotice(slotDate, timeStr, settings)) {
-      available = false
-      reason = 'Too soon to book'
-    }
-    
-    // Check for conflicts with existing bookings
-    if (available) {
-      for (const booking of existingBookings) {
-        // Fix: Add proper null/undefined checks for booking date and time
-        const bookingDate = booking.metadata?.booking_date
-        const bookingTime = booking.metadata?.booking_time
-        
-        if (bookingDate === date && bookingTime) {
-          const bookingMinutes = timeToMinutes(bookingTime)
-          const bookingDuration = booking.metadata?.event_type?.metadata?.duration ?? 30
-          const bookingEndMinutes = bookingMinutes + bookingDuration
-          
-          // Add buffer time to existing booking
-          const bufferedStartMinutes = bookingMinutes - bufferTime
-          const bufferedEndMinutes = bookingEndMinutes + bufferTime
-          
-          // Check if new slot overlaps with buffered existing booking
-          if ((minutes >= bufferedStartMinutes && minutes < bufferedEndMinutes) ||
-              (slotEndMinutes > bufferedStartMinutes && slotEndMinutes <= bufferedEndMinutes) ||
-              (minutes <= bufferedStartMinutes && slotEndMinutes >= bufferedEndMinutes)) {
-            available = false
-            reason = 'Time slot unavailable'
-            break
-          }
-        }
-      }
-    }
-    
-    slots.push({
-      time: timeStr,
-      available,
-      reason: available ? undefined : reason
+    // Check if this slot conflicts with existing bookings
+    const hasConflict = existingBookings.some(booking => {
+      const bookingDate = booking.metadata?.booking_date
+      const bookingTime = booking.metadata?.booking_time
+      
+      if (!bookingDate || !bookingTime) return false
+      
+      const bookingDateObj = new Date(bookingDate)
+      const targetDateStr = date.toISOString().split('T')[0]
+      const bookingDateStr = bookingDateObj.toISOString().split('T')[0]
+      
+      return bookingDateStr === targetDateStr && bookingTime === timeSlot
     })
+    
+    if (!hasConflict) {
+      slots.push(timeSlot)
+    }
   }
   
   return slots
 }
 
-// Format time for display (convert 24h to 12h format)
-export function formatTime(time: string): string {
-  if (!time) return ''
+// Generate calendar data for a given month
+export function generateCalendarData(
+  year: number,
+  month: number,
+  bookings: Booking[] = []
+) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDate = new Date(firstDay)
+  const endDate = new Date(lastDay)
   
-  const parts = time.split(':')
-  const hours = parts[0] ? parseInt(parts[0], 10) : 0
-  const minutes = parts[1] ? parseInt(parts[1], 10) : 0
+  // Adjust start date to beginning of week (Sunday)
+  startDate.setDate(startDate.getDate() - startDate.getDay())
   
-  if (isNaN(hours) || isNaN(minutes)) return time
+  // Adjust end date to end of week (Saturday)
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()))
   
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
+  const days = []
+  const currentDate = new Date(startDate)
   
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+  while (currentDate <= endDate) {
+    const dayName = getDayName(currentDate)
+    
+    // Ensure dayName is defined before using it
+    if (dayName) {
+      days.push({
+        date: currentDate.toISOString().split('T')[0],
+        dayName,
+        available: true,
+        reason: dayName ? undefined : 'Invalid day name'
+      })
+    }
+    
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return days
 }
 
-// Format date for display
-export function formatDate(date: string): string {
-  if (!date) return ''
+// Format time for display
+export function formatTime(time: string): string {
+  const [hour, minute] = time.split(':')
+  const hourNum = parseInt(hour)
+  const ampm = hourNum >= 12 ? 'PM' : 'AM'
+  const displayHour = hourNum > 12 ? hourNum - 12 : hourNum === 0 ? 12 : hourNum
   
-  try {
-    return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch {
-    return date
+  return `${displayHour}:${minute} ${ampm}`
+}
+
+// Format duration for display
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes}m`
   }
+  
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  
+  if (remainingMinutes === 0) {
+    return `${hours}h`
+  }
+  
+  return `${hours}h ${remainingMinutes}m`
+}
+
+// Check if two time slots overlap
+export function timeSlotsOverlap(
+  start1: string,
+  duration1: number,
+  start2: string,
+  duration2: number
+): boolean {
+  const [hour1, minute1] = start1.split(':').map(Number)
+  const [hour2, minute2] = start2.split(':').map(Number)
+  
+  const startMinutes1 = hour1 * 60 + minute1
+  const endMinutes1 = startMinutes1 + duration1
+  
+  const startMinutes2 = hour2 * 60 + minute2
+  const endMinutes2 = startMinutes2 + duration2
+  
+  return startMinutes1 < endMinutes2 && startMinutes2 < endMinutes1
+}
+
+// Get bookings for a specific date
+export function getBookingsForDate(bookings: Booking[], date: string): Booking[] {
+  return bookings.filter(booking => {
+    const bookingDate = booking.metadata?.booking_date
+    if (!bookingDate) return false
+    
+    const bookingDateObj = new Date(bookingDate)
+    const bookingDateStr = bookingDateObj.toISOString().split('T')[0]
+    
+    return bookingDateStr === date
+  })
 }
