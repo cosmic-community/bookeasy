@@ -12,13 +12,13 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
     site_name: settings?.metadata?.site_name || 'BookEasy',
     buffer_time: settings?.metadata?.buffer_time || 15,
     email_notifications: settings?.metadata?.email_notifications ?? true,
-    // New availability settings
-    default_start_time: '09:00',
-    default_end_time: '17:00',
-    default_available_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    timezone: 'Eastern Time (EST)',
-    booking_window_days: 30,
-    minimum_notice_hours: 24
+    // New availability settings with defaults from existing data or fallbacks
+    default_start_time: settings?.metadata?.default_start_time || '09:00',
+    default_end_time: settings?.metadata?.default_end_time || '17:00',
+    default_available_days: settings?.metadata?.default_available_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    timezone: settings?.metadata?.timezone || 'Eastern Time (EST)',
+    booking_window_days: settings?.metadata?.booking_window_days || 30,
+    minimum_notice_hours: settings?.metadata?.minimum_notice_hours || 24
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -125,7 +125,7 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
               <input
                 type="checkbox"
                 className="rounded border-gray-300 text-primary focus:ring-primary"
-                checked={formData.email_notifications}
+                checked={Boolean(formData.email_notifications)}
                 onChange={(e) => setFormData({ ...formData, email_notifications: e.target.checked })}
               />
               <span className="ml-2 text-sm text-gray-700">
