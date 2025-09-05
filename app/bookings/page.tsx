@@ -13,7 +13,8 @@ export default async function BookingsPage() {
   ])
 
   const handleBookingUpdated = () => {
-    // This will be handled client-side via router.refresh() or similar
+    // This will be handled by the client component internally
+    // We just need to provide the function to satisfy the interface
   }
 
   return (
@@ -26,7 +27,7 @@ export default async function BookingsPage() {
             📅 Bookings Calendar
           </h1>
           <p className="text-gray-600">
-            View and manage all your bookings in calendar format.
+            View and manage all your bookings in a calendar format.
           </p>
         </div>
 

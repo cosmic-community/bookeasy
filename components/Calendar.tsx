@@ -252,8 +252,8 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
       {showBookingForm && selectedDate && selectedTime && (
         <BookingFormModal
           eventType={eventType}
-          bookingTime={selectedTime}
           bookingDate={selectedDate}
+          bookingTime={selectedTime}
           settings={settings}
           onClose={handleCloseBookingForm}
           onSuccess={handleBookingSuccess}
