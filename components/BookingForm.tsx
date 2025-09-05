@@ -1,14 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EventType, Settings } from '@/types'
+import { EventType } from '@/types'
 
 interface BookingFormProps {
   eventType: EventType
-  settings?: Settings | null
+  onSubmit: (formData: {
+    event_type_id: string
+    attendee_name: string
+    attendee_email: string
+    booking_date: string
+    booking_time: string
+    notes?: string
+  }) => Promise<void>
+  onCancel: () => void
 }
 
-export default function BookingForm({ eventType, settings }: BookingFormProps) {
+export default function BookingForm({ eventType, onSubmit, onCancel }: BookingFormProps) {
   const [formData, setFormData] = useState({
     attendee_name: '',
     attendee_email: '',
@@ -16,344 +24,195 @@ export default function BookingForm({ eventType, settings }: BookingFormProps) {
     booking_time: '',
     notes: ''
   })
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [error, setError] = useState('')
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([])
+  const [availableTimes, setAvailableTimes] = useState<string[]>([])
 
-  // Get availability settings - prioritize event-specific, fall back to global settings
-  const availableDays = eventType.metadata?.available_days || settings?.metadata?.default_available_days || []
-  const startTime = eventType.metadata?.start_time || settings?.metadata?.default_start_time || '09:00'
-  const endTime = eventType.metadata?.end_time || settings?.metadata?.default_end_time || '17:00'
-  const duration = eventType.metadata?.duration || 30
-  const bufferTime = settings?.metadata?.buffer_time || 15
-  const minimumNoticeHours = settings?.metadata?.minimum_notice_hours || 24
-  const bookingWindowDays = settings?.metadata?.booking_window_days || 30
-
-  // Check if a date is available
-  const isDateAvailable = (dateString: string): boolean => {
-    const date = new Date(dateString)
-    const now = new Date()
-    
-    // Check minimum notice requirement
-    const hoursUntilDate = (date.getTime() - now.getTime()) / (1000 * 60 * 60)
-    if (hoursUntilDate < minimumNoticeHours) {
-      return false
-    }
-    
-    // Check booking window
-    const daysUntilDate = (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    if (daysUntilDate > bookingWindowDays) {
-      return false
-    }
-    
-    // Check if day of week is available
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const dayName = dayNames[date.getDay()]
-    
-    return availableDays.includes(dayName)
-  }
-
-  // Generate time slots based on availability
-  const generateTimeSlots = (selectedDate: string): string[] => {
-    if (!selectedDate || !isDateAvailable(selectedDate)) {
-      return []
-    }
-
-    const slots: string[] = []
-    // Fix: Ensure startTime and endTime are defined strings with proper validation
-    if (!startTime || !endTime) {
-      console.warn('Start time or end time is not defined')
-      return []
-    }
-    
-    const start = new Date(`2000-01-01T${startTime}:00`)
-    const end = new Date(`2000-01-01T${endTime}:00`)
-    
-    // Validate that the dates were created successfully
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      console.warn('Invalid time format detected')
-      return []
-    }
-    
-    while (start < end) {
-      const timeString = start.toTimeString().slice(0, 5)
-      slots.push(timeString)
-      start.setMinutes(start.getMinutes() + duration + bufferTime)
-    }
-    
-    return slots
-  }
-
-  // Update available time slots when date changes
+  // Generate available time slots based on event type
   useEffect(() => {
-    // Fix: Add explicit validation for booking_date
-    const selectedDate = formData.booking_date
-    if (selectedDate && selectedDate.trim() !== '') {
-      const slots = generateTimeSlots(selectedDate)
-      setAvailableTimeSlots(slots)
-      
-      // Clear selected time if it's no longer available
-      if (formData.booking_time && !slots.includes(formData.booking_time)) {
-        setFormData(prev => ({ ...prev, booking_time: '' }))
-      }
-    } else {
-      setAvailableTimeSlots([])
+    if (!eventType?.metadata?.start_time || !eventType?.metadata?.end_time || !eventType?.metadata?.duration) {
+      setAvailableTimes([])
+      return
     }
-  }, [formData.booking_date, startTime, endTime, duration, bufferTime])
 
-  // Generate date options for the next available dates
-  const getAvailableDates = (): Array<{date: string, label: string, available: boolean}> => {
-    const dates: Array<{date: string, label: string, available: boolean}> = []
-    const today = new Date()
-    
-    for (let i = 0; i <= bookingWindowDays; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
-      
-      const dateString = date.toISOString().split('T')[0]
-      // Fix: Ensure dateString is defined and valid
-      if (dateString && dateString.length > 0) {
-        const available = isDateAvailable(dateString)
-        
-        dates.push({
-          date: dateString,
-          label: date.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-          }),
-          available
-        })
-      }
+    const startTime = eventType.metadata.start_time
+    const endTime = eventType.metadata.end_time
+    const duration = eventType.metadata.duration
+
+    const times: string[] = []
+    let current = new Date(`2000-01-01 ${startTime}`)
+    const end = new Date(`2000-01-01 ${endTime}`)
+
+    while (current < end) {
+      const timeString = current.toTimeString().slice(0, 5)
+      times.push(timeString)
+      current.setMinutes(current.getMinutes() + duration)
     }
-    
-    return dates
-  }
 
-  const availableDatesOptions = getAvailableDates()
+    setAvailableTimes(times)
+  }, [eventType])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setError('')
-
-    // Final validation - Fix: Ensure formData.booking_date is valid before validation
-    const selectedDate = formData.booking_date
-    if (!selectedDate || selectedDate.trim() === '') {
-      setError('Please select a date for your booking.')
-      setIsSubmitting(false)
-      return
-    }
     
-    if (!isDateAvailable(selectedDate)) {
-      setError('Selected date is not available. Please choose an available date.')
-      setIsSubmitting(false)
+    if (!eventType?.id) {
+      console.error('Event type ID is required')
       return
     }
 
-    if (!formData.booking_time || !availableTimeSlots.includes(formData.booking_time)) {
-      setError('Selected time is not available. Please choose an available time slot.')
-      setIsSubmitting(false)
-      return
-    }
-
+    setIsSubmitting(true)
+    
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          event_type_id: eventType.id,
-          attendee_name: formData.attendee_name,
-          attendee_email: formData.attendee_email,
-          booking_date: formData.booking_date,
-          booking_time: formData.booking_time,
-          notes: formData.notes
-        })
+      await onSubmit({
+        event_type_id: eventType.id, // This was line 54 - now properly typed
+        attendee_name: formData.attendee_name,
+        attendee_email: formData.attendee_email,
+        booking_date: formData.booking_date,
+        booking_time: formData.booking_time,
+        notes: formData.notes || undefined
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create booking')
-      }
-
-      setIsSuccess(true)
     } catch (error) {
-      console.error('Error creating booking:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
+      console.error('Error submitting booking:', error)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  if (isSuccess) {
-    return (
-      <div className="card">
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Booking Confirmed!
-          </h2>
-          <p className="text-gray-600">
-            Your meeting has been scheduled. You'll receive a confirmation email shortly.
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const isFormValid = formData.attendee_name && 
+                     formData.attendee_email && 
+                     formData.booking_date && 
+                     formData.booking_time
+
+  const today = new Date().toISOString().split('T')[0]
 
   return (
-    <div className="space-y-6">
-      {/* Availability Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-medium text-blue-900 mb-2">📅 Availability</h3>
-        <div className="text-sm text-blue-800 space-y-1">
-          <p><strong>Available days:</strong> {availableDays.join(', ')}</p>
-          <p><strong>Available times:</strong> {startTime} - {endTime}</p>
-          <p><strong>Duration:</strong> {duration} minutes</p>
-          {bufferTime > 0 && (
-            <p><strong>Buffer time:</strong> {bufferTime} minutes between meetings</p>
-          )}
-          <p><strong>Minimum notice:</strong> {minimumNoticeHours} hours</p>
-          <p><strong>Booking window:</strong> {bookingWindowDays} days</p>
+    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {eventType?.metadata?.event_name || eventType?.title || 'Book Meeting'}
+        </h2>
+        {eventType?.metadata?.description && (
+          <p className="text-gray-600 text-sm">
+            {eventType.metadata.description}
+          </p>
+        )}
+        <div className="mt-2 text-sm text-gray-500">
+          ⏱️ {eventType?.metadata?.duration || 30} minutes
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">
-          Book your meeting
-        </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-1">
+            Your Name *
+          </label>
+          <input
+            type="text"
+            id="attendee_name"
+            required
+            className="input"
+            placeholder="Enter your full name"
+            value={formData.attendee_name}
+            onChange={(e) => setFormData({ ...formData, attendee_name: e.target.value })}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-2">
-              Your Name *
-            </label>
-            <input
-              type="text"
-              id="attendee_name"
-              required
-              className="input"
-              value={formData.attendee_name}
-              onChange={(e) => setFormData({ ...formData, attendee_name: e.target.value })}
-            />
-          </div>
+        <div>
+          <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-1">
+            Email Address *
+          </label>
+          <input
+            type="email"
+            id="attendee_email"
+            required
+            className="input"
+            placeholder="Enter your email address"
+            value={formData.attendee_email}
+            onChange={(e) => setFormData({ ...formData, attendee_email: e.target.value })}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address *
-            </label>
-            <input
-              type="email"
-              id="attendee_email"
-              required
-              className="input"
-              value={formData.attendee_email}
-              onChange={(e) => setFormData({ ...formData, attendee_email: e.target.value })}
-            />
-          </div>
+        <div>
+          <label htmlFor="booking_date" className="block text-sm font-medium text-gray-700 mb-1">
+            Date *
+          </label>
+          <input
+            type="date"
+            id="booking_date"
+            required
+            min={today}
+            className="input"
+            value={formData.booking_date}
+            onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="booking_date" className="block text-sm font-medium text-gray-700 mb-2">
-              Select Date *
-            </label>
-            <select
-              id="booking_date"
-              required
-              className="select"
-              value={formData.booking_date}
-              onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
-            >
-              <option value="">Choose a date</option>
-              {availableDatesOptions.map((dateOption) => (
-                <option 
-                  key={dateOption.date} 
-                  value={dateOption.date}
-                  disabled={!dateOption.available}
-                  className={dateOption.available ? 'text-gray-900' : 'text-gray-400'}
-                >
-                  {dateOption.label} {dateOption.available ? '✅' : '❌ Unavailable'}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              ✅ Available dates | ❌ Unavailable dates
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="booking_time" className="block text-sm font-medium text-gray-700 mb-2">
-              Select Time *
-            </label>
-            <select
-              id="booking_time"
-              required
-              className="select"
-              value={formData.booking_time}
-              onChange={(e) => setFormData({ ...formData, booking_time: e.target.value })}
-              disabled={!formData.booking_date || availableTimeSlots.length === 0}
-            >
-              <option value="">
-                {!formData.booking_date 
-                  ? 'Select a date first' 
-                  : availableTimeSlots.length === 0 
-                    ? 'No times available for selected date'
-                    : 'Choose a time'
-                }
+        <div>
+          <label htmlFor="booking_time" className="block text-sm font-medium text-gray-700 mb-1">
+            Time *
+          </label>
+          <select
+            id="booking_time"
+            required
+            className="select"
+            value={formData.booking_time}
+            onChange={(e) => setFormData({ ...formData, booking_time: e.target.value })}
+          >
+            <option value="">Select a time</option>
+            {availableTimes.map((time) => (
+              <option key={time} value={time}>
+                {new Date(`2000-01-01 ${time}`).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                })}
               </option>
-              {availableTimeSlots.map((time) => (
-                <option key={time} value={time} className="text-gray-900">
-                  {time} ✅
-                </option>
-              ))}
-            </select>
-            {formData.booking_date && availableTimeSlots.length === 0 && (
-              <p className="text-xs text-red-600 mt-1">
-                No time slots available for the selected date. Please choose a different date.
-              </p>
-            )}
-            {availableTimeSlots.length > 0 && (
-              <p className="text-xs text-green-600 mt-1">
-                {availableTimeSlots.length} time slot{availableTimeSlots.length !== 1 ? 's' : ''} available
-              </p>
-            )}
-          </div>
+            ))}
+          </select>
+        </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-              Additional Notes (Optional)
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              className="textarea"
-              placeholder="Anything else you'd like us to know?"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            />
-          </div>
+        <div>
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            Notes (Optional)
+          </label>
+          <textarea
+            id="notes"
+            rows={3}
+            className="textarea"
+            placeholder="Any additional information or questions..."
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          />
+        </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
-            )}
-
+        <div className="flex space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 btn btn-secondary"
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
           <button
             type="submit"
-            disabled={isSubmitting || !formData.booking_date || !formData.booking_time || availableTimeSlots.length === 0}
-            className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!isFormValid || isSubmitting}
+            className="flex-1 btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Scheduling...' : 'Schedule Meeting'}
+            {isSubmitting ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Booking...
+              </span>
+            ) : (
+              'Book Meeting'
+            )}
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }
