@@ -1,200 +1,241 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Booking } from '@/types'
 import { formatDate, formatTime } from '@/lib/availability'
+import BookingFormModal from './BookingFormModal'
 
 interface BookingsListProps {
   bookings: Booking[]
-  onBookingUpdate: () => void
+  onBookingUpdate: (updatedBooking: Booking) => void
 }
 
 export default function BookingsList({ bookings, onBookingUpdate }: BookingsListProps) {
-  const [updatingBookings, setUpdatingBookings] = useState<Set<string>>(new Set())
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
-  const handleStatusUpdate = async (bookingId: string, newStatus: { key: string; value: string }) => {
-    setUpdatingBookings(prev => new Set([...prev, bookingId]))
-
-    try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update booking')
+  // Get unique statuses for filter - Fix Set iteration issue
+  const availableStatuses = useMemo(() => {
+    const statusSet = new Set<string>()
+    bookings.forEach(booking => {
+      const status = booking.metadata?.status
+      if (typeof status === 'string') {
+        statusSet.add(status)
+      } else if (status && typeof status === 'object' && status.value) {
+        statusSet.add(status.value)
       }
+    })
+    // Convert Set to Array for iteration
+    return Array.from(statusSet)
+  }, [bookings])
 
-      // Refresh bookings list
-      onBookingUpdate()
+  // Filter bookings based on status
+  const filteredBookings = useMemo(() => {
+    if (statusFilter === 'all') return bookings
+    
+    return bookings.filter(booking => {
+      const status = booking.metadata?.status
+      const statusValue = typeof status === 'string' ? status : status?.value
+      return statusValue?.toLowerCase() === statusFilter.toLowerCase()
+    })
+  }, [bookings, statusFilter])
 
-    } catch (error) {
-      console.error('Error updating booking:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update booking')
-    } finally {
-      setUpdatingBookings(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(bookingId)
-        return newSet
-      })
-    }
+  // Group bookings by date
+  const groupedBookings = useMemo(() => {
+    const groups: { [key: string]: Booking[] } = {}
+    
+    filteredBookings.forEach(booking => {
+      const date = booking.metadata?.booking_date
+      if (date) {
+        if (!groups[date]) {
+          groups[date] = []
+        }
+        groups[date].push(booking)
+      }
+    })
+
+    // Sort groups by date (most recent first)
+    const sortedGroups = Object.keys(groups)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      .reduce((acc, date) => {
+        acc[date] = groups[date].sort((a, b) => {
+          const timeA = a.metadata?.booking_time || ''
+          const timeB = b.metadata?.booking_time || ''
+          return timeA.localeCompare(timeB)
+        })
+        return acc
+      }, {} as { [key: string]: Booking[] })
+
+    return sortedGroups
+  }, [filteredBookings])
+
+  const handleBookingClick = (booking: Booking) => {
+    setSelectedBooking(booking)
   }
 
-  const getStatusColor = (status: string | { key: string; value: string }): string => {
-    const statusValue = typeof status === 'string' ? status : status.value
+  const handleModalClose = () => {
+    setSelectedBooking(null)
+  }
+
+  const handleStatusUpdate = (updatedBooking: Booking) => {
+    onBookingUpdate(updatedBooking)
+    setSelectedBooking(null)
+  }
+
+  const getStatusColor = (status: string | { key: string; value: string } | undefined) => {
+    const statusValue = typeof status === 'string' ? status : status?.value || ''
     
     switch (statusValue.toLowerCase()) {
       case 'confirmed':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 text-red-800 border-red-200'
       case 'completed':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-100 text-blue-800 border-blue-200'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
-  const getStatusText = (status: string | { key: string; value: string }): string => {
+  const getStatusText = (status: string | { key: string; value: string } | undefined): string => {
     if (typeof status === 'string') {
       return status
     }
-    return status.value || status.key || 'Unknown'
+    return status?.value || 'Unknown'
   }
 
   if (bookings.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-        <p className="text-gray-500">When people book meetings, they'll appear here.</p>
+        <p className="text-gray-500">When people book appointments, they'll appear here.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {bookings.map((booking) => {
-        const isUpdating = updatingBookings.has(booking.id)
-        const currentStatus = getStatusText(booking.metadata?.status || { key: 'unknown', value: 'Unknown' })
-        
-        return (
-          <div key={booking.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {booking.metadata?.attendee_name}
-                  </h3>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.metadata?.status || 'unknown')}`}>
-                    {currentStatus}
-                  </span>
-                </div>
-                
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                    <span>{booking.metadata?.attendee_email}</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span>
-                      {booking.metadata?.booking_date ? formatDate(booking.metadata.booking_date) : 'No date'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>
-                      {booking.metadata?.booking_time ? formatTime(booking.metadata.booking_time) : 'No time'}
-                    </span>
-                  </div>
+    <div className="space-y-6">
+      {/* Filter Controls */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-3 py-1 rounded-full text-sm font-medium border ${
+            statusFilter === 'all'
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          All ({bookings.length})
+        </button>
+        {availableStatuses.map(status => {
+          const count = bookings.filter(booking => {
+            const bookingStatus = booking.metadata?.status
+            const statusValue = typeof bookingStatus === 'string' ? bookingStatus : bookingStatus?.value
+            return statusValue?.toLowerCase() === status.toLowerCase()
+          }).length
 
-                  {booking.metadata?.event_type && (
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span>
-                        {typeof booking.metadata.event_type === 'object' && booking.metadata.event_type?.title
-                          ? booking.metadata.event_type.title
-                          : 'Event Type'}
-                      </span>
-                    </div>
-                  )}
+          return (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                statusFilter === status
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {status} ({count})
+            </button>
+          )
+        })}
+      </div>
 
-                  {booking.metadata?.notes && (
-                    <div className="flex items-start space-x-2 mt-2">
-                      <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <div className="bg-gray-50 rounded px-3 py-2 text-sm">
-                        <span className="font-medium">Notes:</span> {booking.metadata.notes}
+      {/* Bookings List */}
+      {Object.keys(groupedBookings).length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No bookings match the selected filter.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedBookings).map(([date, dateBookings]) => (
+            <div key={date} className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {formatDate(date)}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {dateBookings.length} booking{dateBookings.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {dateBookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    onClick={() => handleBookingClick(booking)}
+                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {booking.metadata?.attendee_name || 'Unknown Attendee'}
+                            </p>
+                            <p className="text-sm text-gray-500 truncate">
+                              {booking.metadata?.attendee_email || 'No email'}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {booking.metadata?.event_type?.metadata?.event_name || 
+                               booking.metadata?.event_type?.title || 'Unknown Event'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatTime(booking.metadata?.booking_time || '')}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {booking.metadata?.event_type?.metadata?.duration || 30}min
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(booking.metadata?.status)}`}>
+                          {getStatusText(booking.metadata?.status)}
+                        </span>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-
-              {/* Action Buttons */}
-              {currentStatus.toLowerCase() !== 'cancelled' && currentStatus.toLowerCase() !== 'completed' && (
-                <div className="flex space-x-2 ml-4">
-                  <button
-                    onClick={() => handleStatusUpdate(booking.id, { key: 'completed', value: 'Completed' })}
-                    disabled={isUpdating}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                      isUpdating
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    {isUpdating ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-1 h-3 w-3" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        ...
-                      </span>
-                    ) : (
-                      'Mark Complete'
-                    )}
-                  </button>
-                  
-                  <button
-                    onClick={() => handleStatusUpdate(booking.id, { key: 'cancelled', value: 'Cancelled' })}
-                    disabled={isUpdating}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                      isUpdating
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
-        )
-      })}
+          ))}
+        </div>
+      )}
+
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <BookingFormModal
+          booking={selectedBooking}
+          onClose={handleModalClose}
+          onStatusUpdate={handleStatusUpdate}
+        />
+      )}
     </div>
   )
 }

@@ -1,99 +1,125 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { EventType, Settings } from '@/types'
-import BookingForm from './BookingForm'
+import { useState } from 'react'
+import { Booking } from '@/types'
+import { formatDate, formatTime } from '@/lib/availability'
 
 interface BookingFormModalProps {
-  eventType: EventType
-  date: string
-  time: string
-  settings: Settings | null
+  booking: Booking
   onClose: () => void
-  onSuccess: () => void
+  onStatusUpdate: (updatedBooking: Booking) => void
 }
 
-export default function BookingFormModal({ 
-  eventType, 
-  date, 
-  time, 
-  settings, 
-  onClose, 
-  onSuccess 
-}: BookingFormModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null)
+type BookingStatusOption = {
+  key: string
+  value: string
+}
 
-  // Handle click outside modal
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose()
+export default function BookingFormModal({ booking, onClose, onStatusUpdate }: BookingFormModalProps) {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState('')
+
+  // Available status options
+  const statusOptions: BookingStatusOption[] = [
+    { key: 'confirmed', value: 'Confirmed' },
+    { key: 'cancelled', value: 'Cancelled' },
+    { key: 'completed', value: 'Completed' }
+  ]
+
+  // Get current status safely
+  const getCurrentStatus = (): BookingStatusOption => {
+    const status = booking.metadata?.status
+    
+    if (typeof status === 'string') {
+      // Find matching option by value (case-insensitive)
+      const matchingOption = statusOptions.find(opt => 
+        opt.value.toLowerCase() === status.toLowerCase()
+      )
+      return matchingOption || { key: status.toLowerCase(), value: status }
+    }
+    
+    if (status && typeof status === 'object' && 'key' in status && 'value' in status) {
+      return {
+        key: String(status.key),
+        value: String(status.value)
       }
     }
+    
+    // Default fallback
+    return { key: 'confirmed', value: 'Confirmed' }
+  }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+  const currentStatus = getCurrentStatus()
+
+  const handleStatusUpdate = async (newStatus: BookingStatusOption) => {
+    if (!booking.id) {
+      setError('Booking ID is missing')
+      return
     }
-  }, [onClose])
 
-  // Handle escape key
-  useEffect(() => {
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
+    setIsUpdating(true)
+    setError('')
+
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update booking')
       }
-    }
 
-    document.addEventListener('keydown', handleEscapeKey)
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey)
+      const { booking: updatedBooking } = await response.json()
+      onStatusUpdate(updatedBooking)
+    } catch (error) {
+      console.error('Error updating booking:', error)
+      setError(error instanceof Error ? error.message : 'Failed to update booking')
+    } finally {
+      setIsUpdating(false)
     }
-  }, [onClose])
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [])
-
-  const handleBookingSuccess = () => {
-    onSuccess()
   }
 
-  // Get host information safely
-  const getHostInfo = () => {
-    const host = eventType?.metadata?.host
-    if (host && typeof host === 'object' && 'metadata' in host) {
-      return host.metadata?.full_name || host.title || 'Host'
+  const getStatusColor = (status: BookingStatusOption) => {
+    switch (status.key.toLowerCase()) {
+      case 'confirmed':
+        return 'bg-green-600 hover:bg-green-700'
+      case 'cancelled':
+        return 'bg-red-600 hover:bg-red-700'
+      case 'completed':
+        return 'bg-blue-600 hover:bg-blue-700'
+      default:
+        return 'bg-gray-600 hover:bg-gray-700'
     }
-    return 'Host'
   }
+
+  // Safe property access with defaults
+  const attendeeName = booking.metadata?.attendee_name || 'Unknown Attendee'
+  const attendeeEmail = booking.metadata?.attendee_email || 'No email provided'
+  const bookingDate = booking.metadata?.booking_date || ''
+  const bookingTime = booking.metadata?.booking_time || ''
+  const notes = booking.metadata?.notes || ''
+  const eventName = booking.metadata?.event_type?.metadata?.event_name || 
+                   booking.metadata?.event_type?.title || 'Unknown Event'
+  const eventDuration = booking.metadata?.event_type?.metadata?.duration || 30
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div 
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Complete Your Booking
-            </h2>
-          </div>
-          
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Booking Details
+          </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-            aria-label="Close modal"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -101,62 +127,109 @@ export default function BookingFormModal({
           </button>
         </div>
 
-        <div className="p-6">
-          {/* Event Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {eventType?.metadata?.event_name || eventType?.title}
-            </h3>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p className="flex items-center">
-                <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long', 
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </p>
-              <p className="flex items-center">
-                <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true
-                })} ({eventType?.metadata?.duration || 30} minutes)
-              </p>
-              <p className="flex items-center">
-                <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {getHostInfo()}
-              </p>
-              {settings?.metadata?.timezone && (
-                <p className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {typeof settings.metadata.timezone === 'string' 
-                    ? settings.metadata.timezone 
-                    : settings.metadata.timezone?.value || 'Unknown timezone'
-                  }
-                </p>
-              )}
+                <p className="text-red-800 text-sm font-medium">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Booking Info */}
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Event Details</h4>
+              <p className="text-sm text-gray-600">{eventName}</p>
+              <p className="text-xs text-gray-500">{eventDuration} minutes</p>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Date & Time</h4>
+              <p className="text-sm text-gray-600">{formatDate(bookingDate)}</p>
+              <p className="text-sm text-gray-600">{formatTime(bookingTime)}</p>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Attendee</h4>
+              <p className="text-sm text-gray-600">{attendeeName}</p>
+              <p className="text-sm text-gray-500">{attendeeEmail}</p>
+            </div>
+
+            {notes && (
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{notes}</p>
+              </div>
+            )}
+
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3">Current Status</h4>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                currentStatus.key === 'confirmed' ? 'bg-green-100 text-green-800' :
+                currentStatus.key === 'cancelled' ? 'bg-red-100 text-red-800' :
+                currentStatus.key === 'completed' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {currentStatus.value}
+              </span>
             </div>
           </div>
 
-          {/* Booking Form */}
-          <BookingForm
-            eventType={eventType}
-            date={date}
-            time={time}
-            settings={settings}
-            onSuccess={handleBookingSuccess}
-          />
+          {/* Status Update Actions */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Update Status</h4>
+            <div className="space-y-2">
+              {statusOptions.map((option) => {
+                const isCurrentStatus = option.key === currentStatus.key
+                
+                return (
+                  <button
+                    key={option.key}
+                    onClick={() => handleStatusUpdate(option)}
+                    disabled={isUpdating || isCurrentStatus}
+                    className={`
+                      w-full text-left px-4 py-3 rounded-lg border transition-all duration-200
+                      ${isCurrentStatus 
+                        ? 'border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed' 
+                        : `border-transparent text-white ${getStatusColor(option)} ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`
+                      }
+                    `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{option.value}</span>
+                      {isCurrentStatus && (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {isUpdating && !isCurrentStatus && (
+                        <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
