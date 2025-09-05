@@ -195,38 +195,42 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
     }
   }, [errors])
 
-  // Safe rendering helpers
-  const renderEventName = () => {
+  // Safe rendering helpers - FIXED: Ensure all return values are strings
+  const renderEventName = (): string => {
     try {
-      return eventType?.metadata?.event_name || eventType?.title || 'Event'
+      const eventName = eventType?.metadata?.event_name || eventType?.title || 'Event'
+      return String(eventName)
     } catch (error) {
       console.error('Error rendering event name:', error)
       return 'Event'
     }
   }
 
-  const renderFormattedDate = () => {
+  const renderFormattedDate = (): string => {
     try {
-      return formatDate(date)
+      const formatted = formatDate(date)
+      return String(formatted)
     } catch (error) {
       console.error('Error formatting date:', error)
-      return date
+      return String(date)
     }
   }
 
-  const renderFormattedTime = () => {
+  const renderFormattedTime = (): string => {
     try {
       const duration = eventType?.metadata?.duration || 30
-      return `${formatTime(time)} (${duration} minutes)`
+      const formatted = `${formatTime(time)} (${duration} minutes)`
+      return String(formatted)
     } catch (error) {
       console.error('Error formatting time:', error)
-      return time
+      return String(time)
     }
   }
 
-  const renderTimezone = () => {
+  const renderTimezone = (): string | null => {
     try {
-      return settings?.metadata?.timezone || null
+      const timezone = settings?.metadata?.timezone
+      return timezone ? String(timezone) : null
     } catch (error) {
       console.error('Error getting timezone:', error)
       return null
@@ -271,7 +275,7 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-red-800 text-sm font-medium">{errors.general}</p>
+            <p className="text-red-800 text-sm font-medium">{String(errors.general)}</p>
           </div>
         </div>
       )}
@@ -299,7 +303,7 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             autoComplete="name"
           />
           {errors.attendee_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.attendee_name}</p>
+            <p className="mt-1 text-sm text-red-600">{String(errors.attendee_name)}</p>
           )}
         </div>
 
@@ -324,7 +328,7 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
             autoComplete="email"
           />
           {errors.attendee_email && (
-            <p className="mt-1 text-sm text-red-600">{errors.attendee_email}</p>
+            <p className="mt-1 text-sm text-red-600">{String(errors.attendee_email)}</p>
           )}
         </div>
 
