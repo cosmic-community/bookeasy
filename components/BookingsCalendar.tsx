@@ -43,20 +43,20 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
     
     while (current <= endDate) {
       days.push(new Date(current))
-      current.setDate(current.getDate() + 1)
+      current.setDate(current.setDate() + 1)
     }
     
     return days
   }, [startDate, endDate])
 
-  // Group bookings by date
+  // Group bookings by date with proper type safety
   const bookingsByDate = useMemo(() => {
     const grouped: Record<string, Booking[]> = {}
     
     bookings.forEach(booking => {
       const date = booking.metadata?.booking_date
-      // Add explicit check for undefined/null date
-      if (date && typeof date === 'string') {
+      // Add explicit check for undefined/null date and ensure it's a string
+      if (date && typeof date === 'string' && date.trim() !== '') {
         if (!grouped[date]) {
           grouped[date] = []
         }
