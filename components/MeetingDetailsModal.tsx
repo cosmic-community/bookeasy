@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Booking } from '@/types'
 
 interface MeetingDetailsModalProps {
@@ -38,9 +38,21 @@ export default function MeetingDetailsModal({
     })
   }
 
+  // Handle escape key press
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   // Handle clicking outside the modal to close it
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+    if (e.target === e.currentTarget) {
       onClose()
     }
   }
@@ -64,6 +76,7 @@ export default function MeetingDetailsModal({
 
       const { booking: updatedBooking } = await response.json()
       onBookingUpdated(updatedBooking)
+      onClose()
     } catch (error) {
       console.error('Error updating booking status:', error)
       alert(error instanceof Error ? error.message : 'Failed to update booking status')
@@ -156,6 +169,16 @@ export default function MeetingDetailsModal({
 
             {/* Action buttons */}
             <div className="flex flex-col space-y-2 pt-6 border-t border-gray-200">
+              {statusInfo.key !== 'confirmed' && statusInfo.key !== 'completed' && (
+                <button
+                  onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
+                  disabled={isUpdating}
+                  className="w-full btn btn-primary disabled:opacity-50"
+                >
+                  {isUpdating ? 'Updating...' : 'Confirm'}
+                </button>
+              )}
+              
               {statusInfo.key !== 'completed' && (
                 <button
                   onClick={() => handleStatusUpdate({ key: 'completed', value: 'Completed' })}

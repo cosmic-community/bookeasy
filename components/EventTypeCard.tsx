@@ -14,8 +14,8 @@ export default function EventTypeCard({ eventType }: EventTypeCardProps) {
 
   return (
     <Link href={`/book/${eventType.slug}`}>
-      <div className="card hover:shadow-md transition-shadow duration-200 cursor-pointer">
-        <div className="mb-4">
+      <div className="card hover:shadow-md transition-shadow duration-200 cursor-pointer h-full flex flex-col">
+        <div className="mb-4 flex-grow">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             {eventType.title}
           </h3>
@@ -24,7 +24,7 @@ export default function EventTypeCard({ eventType }: EventTypeCardProps) {
           </p>
         </div>
 
-        <div className="space-y-2 text-sm text-gray-500">
+        <div className="space-y-2 text-sm text-gray-500 mb-4">
           <div className="flex items-center">
             <span className="font-medium">Duration:</span>
             <span className="ml-2">{duration} minutes</span>
@@ -45,7 +45,7 @@ export default function EventTypeCard({ eventType }: EventTypeCardProps) {
           )}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-auto pt-4 border-t border-gray-100">
           <span className="inline-flex items-center text-primary text-sm font-medium">
             Book this meeting
             <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

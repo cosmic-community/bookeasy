@@ -1,50 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cosmic } from '@/lib/cosmic'
+import { getSettings, updateSettings } from '@/lib/cosmic'
 
-export async function PUT(request: NextRequest) {
+// GET method for fetching settings
+export async function GET() {
+  try {
+    const settings = await getSettings()
+    
+    return NextResponse.json({ 
+      success: true, 
+      settings 
+    })
+  } catch (error) {
+    console.error('Error fetching settings:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to fetch settings' 
+      }, 
+      { status: 500 }
+    )
+  }
+}
+
+// POST method for updating settings
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Get existing settings
-    const existingSettings = await cosmic.objects
-      .findOne({ type: 'settings' })
-      .props(['id', 'title', 'slug', 'metadata'])
-
-    if (!existingSettings.object) {
+    // Get current settings to extract the ID
+    const currentSettings = await getSettings()
+    if (!currentSettings) {
       return NextResponse.json(
-        { error: 'Settings not found' },
+        { 
+          success: false, 
+          error: 'No settings found to update' 
+        }, 
         { status: 404 }
       )
     }
 
-    // Update settings with new data
-    const updatedSettings = await cosmic.objects.updateOne(
-      existingSettings.object.id,
-      {
-        metadata: {
-          site_name: body.site_name,
-          buffer_time: Number(body.buffer_time),
-          email_notifications: Boolean(body.email_notifications),
-          default_start_time: body.default_start_time,
-          default_end_time: body.default_end_time,
-          default_available_days: body.default_available_days,
-          timezone: body.timezone,
-          booking_window_days: Number(body.booking_window_days),
-          minimum_notice_hours: Number(body.minimum_notice_hours)
-        }
-      }
-    )
-
+    const settingsId = currentSettings.id
+    const updatedSettings = await updateSettings(settingsId, body)
+    
     return NextResponse.json({ 
-      message: 'Settings updated successfully',
-      settings: updatedSettings.object 
+      success: true, 
+      settings: updatedSettings 
     })
-
   } catch (error) {
     console.error('Error updating settings:', error)
     return NextResponse.json(
-      { error: 'Failed to update settings' },
+      { 
+        success: false, 
+        error: 'Failed to update settings' 
+      }, 
       { status: 500 }
     )
   }
+}
+
+// PUT method for updating settings (alternative method)
+export async function PUT(request: NextRequest) {
+  return POST(request)
 }

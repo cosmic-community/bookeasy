@@ -3,9 +3,10 @@ import EventTypeCard from './EventTypeCard'
 
 interface EventTypeGridProps {
   eventTypes: EventType[]
+  isFeatured?: boolean
 }
 
-export default function EventTypeGrid({ eventTypes }: EventTypeGridProps) {
+export default function EventTypeGrid({ eventTypes, isFeatured = false }: EventTypeGridProps) {
   if (!eventTypes || eventTypes.length === 0) {
     return (
       <div className="text-center py-12">
@@ -15,7 +16,13 @@ export default function EventTypeGrid({ eventTypes }: EventTypeGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className={`
+      grid gap-6 
+      ${isFeatured 
+        ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' 
+        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+      }
+    `}>
       {eventTypes.map((eventType) => (
         <EventTypeCard
           key={eventType.id}
