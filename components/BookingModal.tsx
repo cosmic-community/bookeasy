@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { EventType, Settings } from '@/types'
 import BookingForm from './BookingForm'
-import { getAvailableTimeSlots, formatDate } from '@/lib/availability'
+import { formatDate } from '@/lib/availability'
 
 interface BookingModalProps {
   eventType: EventType

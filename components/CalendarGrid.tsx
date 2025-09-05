@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, Dispatch, SetStateAction } from 'react'
-import { EventType, Settings, Booking } from '@/types'
-import { getAvailableDays, getAvailableTimeSlots, formatTime, AvailableDay } from '@/lib/availability'
+import { Dispatch, SetStateAction } from 'react'
+import { AvailableDay } from '@/lib/availability'
 
 interface CalendarGridProps {
   year: number

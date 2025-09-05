@@ -108,7 +108,7 @@ export function getAvailableDays(
     }
     
     days.push({
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0] || '',
       dayName,
       available,
       reason: available ? undefined : reason
