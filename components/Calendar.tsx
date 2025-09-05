@@ -1,86 +1,88 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Booking, EventType, Settings } from '@/types'
-import CalendarGrid from '@/components/CalendarGrid'
-import BookingModal from '@/components/BookingModal'
-import MeetingDetailsModal from '@/components/MeetingDetailsModal'
+import { useState, useEffect } from 'react'
+import { EventType, Booking, Settings } from '@/types'
+import { getAvailableDays, getAvailableTimeSlots, TimeSlot } from '@/lib/availability'
+import CalendarGrid from './CalendarGrid'
+import BookingModal from './BookingModal'
 
 interface CalendarProps {
-  bookings: Booking[]
-  eventTypes: EventType[]
-  settings?: Settings | null
+  eventType: EventType
+  settings: Settings | null
 }
 
-export default function Calendar({ bookings: initialBookings, eventTypes, settings }: CalendarProps) {
+export default function Calendar({ eventType, settings }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const [bookings, setBookings] = useState(initialBookings)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
-  const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [existingBookings, setExistingBookings] = useState<Booking[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Get current month and year
-  const currentYear = currentDate.getFullYear()
-  const currentMonth = currentDate.getMonth()
+  // Fetch bookings for the selected date
+  useEffect(() => {
+    if (selectedDate) {
+      fetchBookingsForDate(selectedDate)
+    }
+  }, [selectedDate])
 
-  // Get bookings grouped by date
-  const bookingsByDate = useMemo(() => {
-    const grouped: Record<string, Booking[]> = {}
-    
-    bookings.forEach(booking => {
-      const date = booking.metadata?.booking_date
-      if (date) {
-        if (!grouped[date]) {
-          grouped[date] = []
-        }
-        grouped[date].push(booking)
+  const fetchBookingsForDate = async (date: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/bookings?date=${date}`)
+      if (response.ok) {
+        const data = await response.json()
+        setExistingBookings(data.bookings || [])
       }
-    })
-    
-    return grouped
-  }, [bookings])
-
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date)
-    setShowBookingModal(true)
+    } catch (error) {
+      console.error('Error fetching bookings:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleBookingClick = (booking: Booking) => {
-    setSelectedBooking(booking)
-    setShowMeetingModal(true)
-  }
-
-  const handleBookingCreated = (newBooking: Booking) => {
-    setBookings(prev => [...prev, newBooking])
-    setShowBookingModal(false)
-    setSelectedDate(null)
-  }
-
-  const handleBookingUpdated = (updatedBooking: Booking) => {
-    setBookings(prev =>
-      prev.map(booking =>
-        booking.id === updatedBooking.id ? updatedBooking : booking
-      )
-    )
-    setShowMeetingModal(false)
-    setSelectedBooking(null)
-  }
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  const handleMonthChange = (increment: number) => {
     setCurrentDate(prev => {
       const newDate = new Date(prev)
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1)
-      } else {
-        newDate.setMonth(prev.getMonth() + 1)
-      }
+      newDate.setMonth(prev.getMonth() + increment)
       return newDate
     })
+    setSelectedDate(null)
+    setSelectedTime(null)
   }
 
-  const goToToday = () => {
-    setCurrentDate(new Date())
+  const handleDateSelect = (value: React.SetStateAction<string | null>) => {
+    if (typeof value === 'function') {
+      setSelectedDate(prevDate => {
+        const newDate = value(prevDate)
+        if (newDate) {
+          setSelectedTime(null)
+        }
+        return newDate
+      })
+    } else {
+      const date = value
+      setSelectedDate(date)
+      if (date) {
+        setSelectedTime(null)
+      }
+    }
+  }
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time)
+  }
+
+  const handleBooking = () => {
+    if (selectedDate && selectedTime) {
+      setShowBookingModal(true)
+    }
+  }
+
+  const handleBookingSuccess = () => {
+    setShowBookingModal(false)
+    setSelectedDate(null)
+    setSelectedTime(null)
   }
 
   const monthNames = [
@@ -88,74 +90,127 @@ export default function Calendar({ bookings: initialBookings, eventTypes, settin
     'July', 'August', 'September', 'October', 'November', 'December'
   ]
 
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+  
+  // Get available days for the current month
+  const availableDays = getAvailableDays(year, month, eventType, settings)
+
+  // Get time slots for selected date
+  const timeSlots: TimeSlot[] = selectedDate ? 
+    getAvailableTimeSlots(selectedDate, eventType, existingBookings, settings) : 
+    []
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-lg shadow-sm border p-6">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {monthNames[currentMonth]} {currentYear}
-          </h2>
-          <button
-            onClick={goToToday}
-            className="btn btn-secondary text-sm"
-          >
-            Today
-          </button>
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={() => handleMonthChange(-1)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Previous month"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="btn btn-secondary p-2"
-            aria-label="Previous month"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={() => navigateMonth('next')}
-            className="btn btn-secondary p-2"
-            aria-label="Next month"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+        <h2 className="text-lg font-semibold">
+          {monthNames[month]} {year}
+        </h2>
+        
+        <button
+          onClick={() => handleMonthChange(1)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Next month"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* Calendar Grid */}
       <CalendarGrid
-        currentDate={currentDate}
-        bookingsByDate={bookingsByDate}
-        onDateClick={handleDateClick}
-        onBookingClick={handleBookingClick}
+        year={year}
+        month={month}
+        availableDays={availableDays}
+        selectedDate={selectedDate}
+        onDateSelect={handleDateSelect}
       />
 
-      {/* Booking Modal */}
-      {showBookingModal && selectedDate && (
-        <BookingModal
-          selectedDate={selectedDate}
-          eventTypes={eventTypes}
-          onClose={() => {
-            setShowBookingModal(false)
-            setSelectedDate(null)
-          }}
-          onBookingCreated={handleBookingCreated}
-        />
+      {/* Time Slots */}
+      {selectedDate && (
+        <div className="mt-6 pt-6 border-t">
+          <h3 className="text-lg font-medium mb-4">
+            Available Times for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </h3>
+          
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {timeSlots.map(slot => (
+                <button
+                  key={slot.time}
+                  onClick={() => slot.available ? handleTimeSelect(slot.time) : undefined}
+                  disabled={!slot.available}
+                  className={`
+                    p-3 text-sm font-medium rounded-lg border transition-all
+                    ${slot.available
+                      ? selectedTime === slot.time
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white border-gray-200 hover:border-primary hover:bg-primary hover:text-white'
+                      : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                    }
+                  `}
+                  title={!slot.available && slot.reason ? slot.reason : undefined}
+                >
+                  {new Date(`2000-01-01T${slot.time}`).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </button>
+              ))}
+              
+              {timeSlots.length === 0 && (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  No available time slots for this date.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Meeting Details Modal */}
-      {showMeetingModal && selectedBooking && (
-        <MeetingDetailsModal
-          booking={selectedBooking}
-          onClose={() => {
-            setShowMeetingModal(false)
-            setSelectedBooking(null)
-          }}
-          onBookingUpdated={handleBookingUpdated}
+      {/* Book Button */}
+      {selectedDate && selectedTime && (
+        <div className="mt-6 pt-6 border-t">
+          <button
+            onClick={handleBooking}
+            className="btn btn-primary w-full"
+          >
+            Book {eventType.metadata?.event_name || eventType.title}
+          </button>
+        </div>
+      )}
+
+      {/* Booking Modal */}
+      {showBookingModal && selectedDate && selectedTime && (
+        <BookingModal
+          eventType={eventType}
+          date={selectedDate}
+          time={selectedTime}
+          settings={settings}
+          onClose={() => setShowBookingModal(false)}
+          onSuccess={handleBookingSuccess}
         />
       )}
     </div>

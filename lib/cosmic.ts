@@ -25,6 +25,7 @@ export async function getEventTypes(): Promise<EventType[]> {
     if (hasStatus(error) && error.status === 404) {
       return [];
     }
+    console.error('Error fetching event types:', error);
     throw new Error('Failed to fetch event types');
   }
 }
@@ -45,6 +46,7 @@ export async function getEventType(slug: string): Promise<EventType | null> {
     if (hasStatus(error) && error.status === 404) {
       return null;
     }
+    console.error('Error fetching event type:', error);
     throw new Error('Failed to fetch event type');
   }
 }
@@ -62,6 +64,7 @@ export async function getBookings(): Promise<Booking[]> {
     if (hasStatus(error) && error.status === 404) {
       return [];
     }
+    console.error('Error fetching bookings:', error);
     throw new Error('Failed to fetch bookings');
   }
 }
@@ -69,6 +72,12 @@ export async function getBookings(): Promise<Booking[]> {
 // Get bookings for a specific date
 export async function getBookingsForDate(date: string): Promise<Booking[]> {
   try {
+    // Validate date format
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      console.error('Invalid date format:', date);
+      return [];
+    }
+
     const response = await cosmic.objects
       .find({ 
         type: 'bookings',
@@ -82,6 +91,7 @@ export async function getBookingsForDate(date: string): Promise<Booking[]> {
     if (hasStatus(error) && error.status === 404) {
       return [];
     }
+    console.error('Error fetching bookings for date:', error);
     throw new Error('Failed to fetch bookings for date');
   }
 }
@@ -96,17 +106,23 @@ export async function createBooking(bookingData: {
   notes?: string;
 }): Promise<Booking> {
   try {
+    // Validate inputs
+    if (!bookingData.event_type_id || !bookingData.attendee_name || !bookingData.attendee_email || 
+        !bookingData.booking_date || !bookingData.booking_time) {
+      throw new Error('Missing required booking data');
+    }
+
     const response = await cosmic.objects.insertOne({
       type: 'bookings',
       title: `${bookingData.attendee_name} - Booking`,
       metadata: {
         event_type: bookingData.event_type_id,
-        attendee_name: bookingData.attendee_name,
-        attendee_email: bookingData.attendee_email,
+        attendee_name: bookingData.attendee_name.trim(),
+        attendee_email: bookingData.attendee_email.trim().toLowerCase(),
         booking_date: bookingData.booking_date,
         booking_time: bookingData.booking_time,
-        status: { key: 'confirmed', value: 'Confirmed' },
-        notes: bookingData.notes || ''
+        status: 'Confirmed', // Use string value that matches select-dropdown options
+        notes: bookingData.notes?.trim() || ''
       }
     });
     
@@ -120,9 +136,14 @@ export async function createBooking(bookingData: {
 // Update booking status
 export async function updateBookingStatus(bookingId: string, status: { key: string; value: string }): Promise<Booking> {
   try {
+    if (!bookingId || !status?.value) {
+      throw new Error('Invalid booking ID or status');
+    }
+
+    // Use just the value for the status (string format)
     const response = await cosmic.objects.updateOne(bookingId, {
       metadata: {
-        status: status
+        status: status.value
       }
     });
     
@@ -145,7 +166,26 @@ export async function getSettings(): Promise<Settings | null> {
     if (hasStatus(error) && error.status === 404) {
       return null;
     }
+    console.error('Error fetching settings:', error);
     throw new Error('Failed to fetch settings');
+  }
+}
+
+// Update settings
+export async function updateSettings(settingsId: string, settingsData: Partial<Settings['metadata']>): Promise<Settings> {
+  try {
+    if (!settingsId) {
+      throw new Error('Settings ID is required');
+    }
+
+    const response = await cosmic.objects.updateOne(settingsId, {
+      metadata: settingsData
+    });
+    
+    return response.object as Settings;
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    throw new Error('Failed to update settings');
   }
 }
 
@@ -180,6 +220,7 @@ export async function getUser(id?: string): Promise<User | null> {
     if (hasStatus(error) && error.status === 404) {
       return null;
     }
+    console.error('Error fetching user:', error);
     throw new Error('Failed to fetch user');
   }
 }

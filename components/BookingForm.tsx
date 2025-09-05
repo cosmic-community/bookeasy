@@ -1,199 +1,388 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { EventType, Settings } from '@/types'
+import { formatTime, formatDate } from '@/lib/availability'
 
 interface BookingFormProps {
   eventType: EventType
-  settings?: Settings | null
+  date: string
+  time: string
+  onSuccess: () => void
+  settings: Settings | null
 }
 
-export default function BookingForm({ eventType, settings }: BookingFormProps) {
-  const [formData, setFormData] = useState({
+interface FormData {
+  attendee_name: string
+  attendee_email: string
+  notes: string
+}
+
+interface FormErrors {
+  attendee_name?: string
+  attendee_email?: string
+  general?: string
+}
+
+export default function BookingForm({ eventType, date, time, onSuccess, settings }: BookingFormProps) {
+  const [formData, setFormData] = useState<FormData>({
     attendee_name: '',
     attendee_email: '',
-    booking_date: '',
-    booking_time: '',
     notes: ''
   })
+  
+  const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [error, setError] = useState('')
 
-  const availableDays = eventType.metadata?.available_days || []
-  const startTime = eventType.metadata?.start_time || '09:00'
-  const endTime = eventType.metadata?.end_time || '17:00'
-  const duration = eventType.metadata?.duration || 30
+  // Validate form data
+  const validateForm = useCallback((): FormErrors => {
+    const newErrors: FormErrors = {}
 
-  // Generate time slots
-  const generateTimeSlots = () => {
-    const slots = []
-    const start = new Date(`2000-01-01T${startTime}:00`)
-    const end = new Date(`2000-01-01T${endTime}:00`)
-    
-    while (start < end) {
-      const timeString = start.toTimeString().slice(0, 5)
-      slots.push(timeString)
-      start.setMinutes(start.getMinutes() + duration)
+    // Name validation
+    if (!formData.attendee_name || !formData.attendee_name.trim()) {
+      newErrors.attendee_name = 'Name is required'
+    } else if (formData.attendee_name.trim().length < 2) {
+      newErrors.attendee_name = 'Name must be at least 2 characters'
     }
-    
-    return slots
-  }
 
-  const timeSlots = generateTimeSlots()
+    // Email validation
+    if (!formData.attendee_email || !formData.attendee_email.trim()) {
+      newErrors.attendee_email = 'Email is required'
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.attendee_email.trim())) {
+        newErrors.attendee_email = 'Please enter a valid email address'
+      }
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    return newErrors
+  }, [formData])
+
+  // Handle form submission with comprehensive error handling
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setError('')
-
+    
     try {
+      console.log('Form submission started')
+      
+      // Clear previous errors
+      setErrors({})
+      setIsSubmitting(true)
+
+      // Validate form
+      const formErrors = validateForm()
+      if (Object.keys(formErrors).length > 0) {
+        console.log('Form validation errors:', formErrors)
+        setErrors(formErrors)
+        setIsSubmitting(false)
+        return
+      }
+
+      // Validate required props
+      if (!eventType?.id) {
+        throw new Error('Event type information is missing')
+      }
+
+      if (!date || !time) {
+        throw new Error('Date and time information is missing')
+      }
+
+      // Prepare payload with sanitized data
+      const payload = {
+        event_type_id: eventType.id,
+        attendee_name: formData.attendee_name.trim(),
+        attendee_email: formData.attendee_email.trim().toLowerCase(),
+        booking_date: date,
+        booking_time: time,
+        notes: formData.notes.trim()
+      }
+
+      console.log('Submitting booking with payload:', payload)
+
+      // Make API request with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          event_type_id: eventType.id,
-          attendee_name: formData.attendee_name,
-          attendee_email: formData.attendee_email,
-          booking_date: formData.booking_date,
-          booking_time: formData.booking_time,
-          notes: formData.notes
-        })
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create booking')
+      clearTimeout(timeoutId)
+
+      console.log('API response status:', response.status)
+
+      // Parse response
+      let responseData
+      try {
+        responseData = await response.json()
+        console.log('API response data:', responseData)
+      } catch (parseError) {
+        console.error('Failed to parse response JSON:', parseError)
+        throw new Error('Invalid response from server')
       }
 
-      setIsSuccess(true)
+      // Handle response
+      if (!response.ok) {
+        const errorMessage = responseData?.error || `Server error (${response.status})`
+        console.error('API error:', errorMessage)
+        throw new Error(errorMessage)
+      }
+
+      // Success
+      console.log('Booking created successfully')
+      
+      // Reset form
+      setFormData({
+        attendee_name: '',
+        attendee_email: '',
+        notes: ''
+      })
+
+      // Call success callback
+      onSuccess()
+
     } catch (error) {
-      console.error('Error creating booking:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
+      console.error('Booking submission error:', error)
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.'
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please check your connection and try again.'
+        } else if (error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.'
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+      }
+
+      setErrors({ general: errorMessage })
     } finally {
       setIsSubmitting(false)
     }
+  }, [formData, eventType, date, time, onSuccess, validateForm])
+
+  // Handle input changes with error clearing
+  const handleInputChange = useCallback((field: keyof FormData) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value = e.target.value
+      
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }))
+
+      // Clear specific field error when user starts typing
+      if (errors[field as keyof FormErrors]) {
+        setErrors(prev => ({
+          ...prev,
+          [field]: undefined
+        }))
+      }
+
+      // Clear general error
+      if (errors.general) {
+        setErrors(prev => ({
+          ...prev,
+          general: undefined
+        }))
+      }
+    }
+  }, [errors])
+
+  // Safe rendering helpers - FIXED: Ensure all return values are strings
+  const renderEventName = (): string => {
+    try {
+      const eventName = eventType?.metadata?.event_name || eventType?.title || 'Event'
+      return String(eventName)
+    } catch (error) {
+      console.error('Error rendering event name:', error)
+      return 'Event'
+    }
   }
 
-  if (isSuccess) {
-    return (
-      <div className="card">
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Booking Confirmed!
-          </h2>
-          <p className="text-gray-600">
-            Your meeting has been scheduled. You'll receive a confirmation email shortly.
-          </p>
-        </div>
-      </div>
-    )
+  const renderFormattedDate = (): string => {
+    try {
+      const formatted = formatDate(date)
+      return String(formatted)
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return String(date)
+    }
+  }
+
+  const renderFormattedTime = (): string => {
+    try {
+      const duration = eventType?.metadata?.duration || 30
+      const formatted = `${formatTime(time)} (${duration} minutes)`
+      return String(formatted)
+    } catch (error) {
+      console.error('Error formatting time:', error)
+      return String(time)
+    }
+  }
+
+  const renderTimezone = (): string | null => {
+    try {
+      const timezone = settings?.metadata?.timezone
+      return timezone ? String(timezone) : null
+    } catch (error) {
+      console.error('Error getting timezone:', error)
+      return null
+    }
   }
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
-        Book your meeting
-      </h2>
+    <div className="space-y-6">
+      {/* Booking Summary */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="font-semibold text-gray-900 mb-2">
+          {renderEventName()}
+        </h3>
+        <div className="text-sm text-gray-600 space-y-1">
+          <p className="flex items-center">
+            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {renderFormattedDate()}
+          </p>
+          <p className="flex items-center">
+            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {renderFormattedTime()}
+          </p>
+          {renderTimezone() && (
+            <p className="flex items-center">
+              <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {renderTimezone()}
+            </p>
+          )}
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* General Error Message */}
+      {errors.general && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-red-800 text-sm font-medium">{String(errors.general)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Form */}
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="attendee_name" className="block text-sm font-medium text-gray-700 mb-1">
             Your Name *
           </label>
           <input
             type="text"
             id="attendee_name"
+            name="attendee_name"
             required
-            className="input"
+            className={`
+              w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              ${errors.attendee_name ? 'border-red-500 bg-red-50' : ''}
+              ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
             value={formData.attendee_name}
-            onChange={(e) => setFormData({ ...formData, attendee_name: e.target.value })}
+            onChange={handleInputChange('attendee_name')}
+            placeholder="Enter your full name"
+            disabled={isSubmitting}
+            autoComplete="name"
           />
+          {errors.attendee_name && (
+            <p className="mt-1 text-sm text-red-600">{String(errors.attendee_name)}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="attendee_email" className="block text-sm font-medium text-gray-700 mb-1">
             Email Address *
           </label>
           <input
             type="email"
             id="attendee_email"
+            name="attendee_email"
             required
-            className="input"
+            className={`
+              w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              ${errors.attendee_email ? 'border-red-500 bg-red-50' : ''}
+              ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
             value={formData.attendee_email}
-            onChange={(e) => setFormData({ ...formData, attendee_email: e.target.value })}
+            onChange={handleInputChange('attendee_email')}
+            placeholder="your.email@example.com"
+            disabled={isSubmitting}
+            autoComplete="email"
           />
+          {errors.attendee_email && (
+            <p className="mt-1 text-sm text-red-600">{String(errors.attendee_email)}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="booking_date" className="block text-sm font-medium text-gray-700 mb-2">
-            Select Date *
-          </label>
-          <input
-            type="date"
-            id="booking_date"
-            required
-            className="input"
-            value={formData.booking_date}
-            onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
-            min={new Date().toISOString().split('T')[0]}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="booking_time" className="block text-sm font-medium text-gray-700 mb-2">
-            Select Time *
-          </label>
-          <select
-            id="booking_time"
-            required
-            className="select"
-            value={formData.booking_time}
-            onChange={(e) => setFormData({ ...formData, booking_time: e.target.value })}
-          >
-            <option value="">Choose a time</option>
-            {timeSlots.map((time) => (
-              <option key={time} value={time}>
-                {time}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
             Additional Notes (Optional)
           </label>
           <textarea
             id="notes"
+            name="notes"
+            className={`
+              w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical
+              ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
             rows={3}
-            className="textarea"
-            placeholder="Anything else you'd like us to know?"
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={handleInputChange('notes')}
+            placeholder="Any additional information or special requests..."
+            disabled={isSubmitting}
+            maxLength={1000}
           />
+          <p className="mt-1 text-xs text-gray-500">
+            {formData.notes.length}/1000 characters
+          </p>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`
+            w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white
+            ${isSubmitting 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+            }
+            transition-colors duration-200
+          `}
         >
-          {isSubmitting ? 'Scheduling...' : 'Schedule Meeting'}
+          {isSubmitting ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Confirming Booking...
+            </>
+          ) : (
+            'Confirm Booking'
+          )}
         </button>
+
+        <p className="text-xs text-gray-500 text-center">
+          By confirming, you'll receive email notifications about your booking.
+        </p>
       </form>
     </div>
   )

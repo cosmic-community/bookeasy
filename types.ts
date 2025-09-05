@@ -51,7 +51,7 @@ interface Booking extends CosmicObject {
     attendee_email?: string;
     booking_date?: string;
     booking_time?: string;
-    status?: {
+    status?: string | {
       key: string;
       value: string;
     };
@@ -70,6 +70,13 @@ interface Settings extends CosmicObject {
     };
     buffer_time?: number;
     email_notifications?: boolean;
+    // New availability settings
+    default_start_time?: string;
+    default_end_time?: string;
+    default_available_days?: string[];
+    timezone?: string;
+    booking_window_days?: number;
+    minimum_notice_hours?: number;
   };
 }
 
@@ -104,6 +111,18 @@ interface EventTypeFormData {
   end_time: string;
 }
 
+interface SettingsFormData {
+  site_name: string;
+  buffer_time: number;
+  email_notifications: boolean;
+  default_start_time: string;
+  default_end_time: string;
+  default_available_days: string[];
+  timezone: string;
+  booking_window_days: number;
+  minimum_notice_hours: number;
+}
+
 // Type guards
 function isUser(obj: CosmicObject): obj is User {
   return obj.type === 'users';
@@ -130,6 +149,7 @@ export type {
   CosmicResponse,
   BookingFormData,
   EventTypeFormData,
+  SettingsFormData,
   BookingStatus,
   TimezoneKey
 };

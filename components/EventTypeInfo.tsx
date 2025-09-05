@@ -1,90 +1,116 @@
-import { EventType } from '@/types'
+import { EventType, Settings } from '@/types'
+import { formatTime } from '@/lib/availability'
 
 interface EventTypeInfoProps {
   eventType: EventType
+  settings: Settings | null
 }
 
-export default function EventTypeInfo({ eventType }: EventTypeInfoProps) {
+export default function EventTypeInfo({ eventType, settings }: EventTypeInfoProps) {
   const host = eventType.metadata?.host
-  const duration = eventType.metadata?.duration || 0
-  const description = eventType.metadata?.description || ''
-  const availableDays = eventType.metadata?.available_days || []
-  const startTime = eventType.metadata?.start_time || ''
-  const endTime = eventType.metadata?.end_time || ''
 
   return (
-    <div className="card">
-      {host && (
-        <div className="flex items-center mb-6">
-          {host.metadata?.profile_photo && (
-            <img 
-              src={`${host.metadata.profile_photo.imgix_url}?w=64&h=64&fit=crop&auto=format,compress`}
-              alt={host.metadata?.full_name || host.title}
-              width="64"
-              height="64"
-              className="rounded-full"
-            />
+    <div className="space-y-6">
+      {/* Event Type Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {eventType.metadata?.event_name || eventType.title}
+        </h2>
+        {eventType.metadata?.description && (
+          <p className="text-gray-600 leading-relaxed">
+            {eventType.metadata.description}
+          </p>
+        )}
+      </div>
+
+      {/* Meeting Details */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900">Meeting Details</h3>
+        
+        <div className="space-y-3">
+          <div className="flex items-center text-gray-700">
+            <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{eventType.metadata?.duration || 30} minutes</span>
+          </div>
+
+          {eventType.metadata?.available_days && eventType.metadata.available_days.length > 0 && (
+            <div className="flex items-start text-gray-700">
+              <svg className="w-5 h-5 mr-3 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <div className="font-medium mb-1">Available Days:</div>
+                <div className="text-sm">
+                  {eventType.metadata.available_days.join(', ')}
+                </div>
+              </div>
+            </div>
           )}
-          <div className="ml-4">
-            <h3 className="font-semibold text-gray-900">
-              {host.metadata?.full_name || host.title}
-            </h3>
-            {host.metadata?.timezone?.value && (
-              <p className="text-sm text-gray-600">
-                {host.metadata.timezone.value}
-              </p>
+
+          {eventType.metadata?.start_time && eventType.metadata?.end_time && (
+            <div className="flex items-center text-gray-700">
+              <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                {formatTime(eventType.metadata.start_time)} - {formatTime(eventType.metadata.end_time)}
+              </span>
+            </div>
+          )}
+
+          {settings?.metadata?.timezone && (
+            <div className="flex items-center text-gray-700">
+              <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{settings.metadata.timezone}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Host Information */}
+      {host && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Host</h3>
+          <div className="flex items-start space-x-4">
+            {host.metadata?.profile_photo?.imgix_url && (
+              <img
+                src={`${host.metadata.profile_photo.imgix_url}?w=120&h=120&fit=crop&auto=format,compress`}
+                alt={host.metadata?.full_name || host.title}
+                className="w-16 h-16 rounded-full object-cover"
+              />
             )}
+            <div>
+              <h4 className="font-semibold text-gray-900">
+                {host.metadata?.full_name || host.title}
+              </h4>
+              {host.metadata?.bio && (
+                <p className="text-gray-600 text-sm mt-1 leading-relaxed">
+                  {host.metadata.bio}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          {eventType.title}
-        </h1>
-        {description && (
-          <p className="text-gray-600 leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center text-sm text-gray-600">
-          <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{duration} minutes</span>
-        </div>
-
-        {availableDays.length > 0 && (
-          <div className="flex items-start text-sm text-gray-600">
-            <svg className="w-5 h-5 mr-3 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      {/* Additional Information */}
+      {settings?.metadata?.buffer_time && settings.metadata.buffer_time > 0 && (
+        <div className="bg-blue-50 rounded-lg p-4">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div>
-              <span className="block">Available days:</span>
-              <span className="text-gray-500">{availableDays.join(', ')}</span>
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">Buffer Time</p>
+              <p>
+                There's a {settings.metadata.buffer_time}-minute buffer between meetings to ensure we can give you our full attention.
+              </p>
             </div>
           </div>
-        )}
-
-        {startTime && endTime && (
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{startTime} - {endTime}</span>
-          </div>
-        )}
-      </div>
-
-      {host?.metadata?.bio && (
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <h4 className="font-medium text-gray-900 mb-2">About</h4>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {host.metadata.bio}
-          </p>
         </div>
       )}
     </div>
