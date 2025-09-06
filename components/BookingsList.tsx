@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Booking } from '@/types'
 import { formatDate, formatTime, formatDuration } from '@/lib/availability'
 import BookingModal from './BookingModal'
+import { CalendarX2, Check, X, Clock, User, Mail, Calendar, FileText, ChevronRight } from 'lucide-react'
 
 interface BookingsListProps {
   bookings: Booking[]
@@ -16,10 +17,8 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
   if (!bookings || bookings.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-gray-400 mb-2">
-          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4h6M3 21l18-18" />
-          </svg>
+        <div className="text-gray-400 mb-4">
+          <CalendarX2 className="mx-auto h-12 w-12" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
         <p className="text-gray-500">There are no bookings to display at this time.</p>
@@ -55,29 +54,13 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
     
     switch (statusValue.toLowerCase()) {
       case 'confirmed':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        )
+        return <Check className="w-4 h-4" />
       case 'cancelled':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )
+        return <X className="w-4 h-4" />
       case 'completed':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
+        return <Check className="w-4 h-4" />
       default:
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
+        return <Clock className="w-4 h-4" />
     }
   }
 
@@ -113,16 +96,12 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
                   
                   <div className="space-y-1 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                      <Mail className="w-4 h-4" />
                       <span>{attendeeEmail || 'No email provided'}</span>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v1a2 2 0 002 2h4a2 2 0 002-2v-1M3 21h18M3 10h18" />
-                      </svg>
+                      <Calendar className="w-4 h-4" />
                       <span>
                         {eventType?.title || 'Unknown Event Type'}
                         {eventType?.metadata?.duration && (
@@ -134,18 +113,14 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v1a2 2 0 002 2h4a2 2 0 002-2v-1M3 21h18M3 10h18" />
-                      </svg>
+                      <Calendar className="w-4 h-4" />
                       <span>
                         {bookingDate ? formatDate(bookingDate) : 'No date set'}
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <Clock className="w-4 h-4" />
                       <span>
                         {bookingTime ? formatTime(bookingTime) : 'No time set'}
                       </span>
@@ -153,9 +128,7 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
                     
                     {notes && (
                       <div className="flex items-start gap-2 pt-1">
-                        <svg className="w-4 h-4 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1-8l-1-1a2 2 0 00-2.828 0L2.586 5.586A2 2 0 002 7.414V10a2 2 0 002 2h2.414a2 2 0 001.414-.586L9 10l1-1z" />
-                        </svg>
+                        <FileText className="w-4 h-4 mt-0.5" />
                         <span className="text-gray-500 italic">{notes}</span>
                       </div>
                     )}
@@ -163,9 +136,7 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
                 </div>
                 
                 <div className="flex-shrink-0 ml-4">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
               </div>
             </div>

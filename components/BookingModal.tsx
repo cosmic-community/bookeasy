@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Booking } from '@/types'
 import { formatTime, formatDate, formatDuration } from '@/lib/availability'
+import { X, User, Calendar, Clock, FileText, Building2 } from 'lucide-react'
 
 interface BookingModalProps {
   booking: Booking
@@ -79,9 +80,7 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -127,8 +126,9 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
 
           {/* Attendee Information */}
           <div className="card bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              👤 Attendee Information
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Attendee Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -144,8 +144,9 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
 
           {/* Event Information */}
           <div className="card bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              📅 Event Information
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Event Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -184,8 +185,9 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
           {/* Event Description */}
           {typeof eventType === 'object' && eventType?.metadata?.description && (
             <div className="card bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                📝 Event Description
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Event Description
               </h3>
               <p className="text-gray-700">
                 {eventType.metadata.description}
@@ -196,8 +198,9 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
           {/* Notes */}
           {notes && (
             <div className="card bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                💬 Notes
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Notes
               </h3>
               <p className="text-gray-700 whitespace-pre-wrap">
                 {notes}
@@ -208,8 +211,9 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
           {/* Host Information */}
           {typeof eventType === 'object' && eventType?.metadata?.host && (
             <div className="card bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                🏢 Host Information
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Host Information
               </h3>
               <div className="flex items-center gap-4">
                 {typeof eventType.metadata.host === 'object' && eventType.metadata.host?.metadata?.profile_photo?.imgix_url && (

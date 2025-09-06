@@ -2,6 +2,7 @@ import { getBookings, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BookingsList from '@/components/BookingsList'
+import { Calendar } from 'lucide-react'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -19,9 +20,12 @@ export default async function BookingsPage() {
         
         <main className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              📅 Bookings
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              <Calendar className="w-8 h-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">
+                Bookings
+              </h1>
+            </div>
             <p className="text-gray-600">
               Manage and view all your scheduled appointments.
             </p>
