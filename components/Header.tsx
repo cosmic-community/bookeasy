@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Settings } from '@/types'
+import { Calendar, ClipboardList, Settings as SettingsIcon } from 'lucide-react'
 
 interface HeaderProps {
   settings?: Settings | null
@@ -48,7 +49,7 @@ export default function Header({ settings }: HeaderProps) {
               }`}
             >
               <span className="flex items-center space-x-2">
-                <span>📅</span>
+                <Calendar className="w-4 h-4" />
                 <span>Book Meeting</span>
               </span>
             </Link>
@@ -62,7 +63,7 @@ export default function Header({ settings }: HeaderProps) {
               }`}
             >
               <span className="flex items-center space-x-2">
-                <span>📋</span>
+                <ClipboardList className="w-4 h-4" />
                 <span>Manage Bookings</span>
               </span>
             </Link>
@@ -76,7 +77,7 @@ export default function Header({ settings }: HeaderProps) {
               }`}
             >
               <span className="flex items-center space-x-2">
-                <span>⚙️</span>
+                <SettingsIcon className="w-4 h-4" />
                 <span>Settings</span>
               </span>
             </Link>

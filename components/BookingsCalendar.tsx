@@ -6,6 +6,7 @@ import { Booking } from '@/types'
 import CalendarGrid from '@/components/CalendarGrid'
 import BookingsList from '@/components/BookingsList'
 import MeetingDetailsModal from '@/components/MeetingDetailsModal'
+import { Calendar, List, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react'
 
 interface BookingsCalendarProps {
   bookings: Booking[]
@@ -68,23 +69,25 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setView('calendar')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
               view === 'calendar'
                 ? 'bg-primary text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
             }`}
           >
-            📅 Calendar View
+            <Calendar className="w-4 h-4" />
+            Calendar View
           </button>
           <button
             onClick={() => setView('list')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
               view === 'list'
                 ? 'bg-primary text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
             }`}
           >
-            📋 List View
+            <List className="w-4 h-4" />
+            List View
           </button>
         </div>
         
@@ -104,9 +107,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                   onClick={prevMonth}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
                 
                 <div className="text-center">
@@ -128,9 +129,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
                   onClick={nextMonth}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
 
@@ -147,8 +146,9 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
           <div className="space-y-4">
             {selectedDate && (
               <div className="card">
-                <h3 className="font-medium text-gray-900 mb-4">
-                  📅 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric'
@@ -211,7 +211,10 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
 
             {/* Quick Stats */}
             <div className="card">
-              <h3 className="font-medium text-gray-900 mb-4">📊 Quick Stats</h3>
+              <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Quick Stats
+              </h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">This Month:</span>
