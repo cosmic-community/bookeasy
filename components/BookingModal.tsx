@@ -8,9 +8,10 @@ import { X, User, Calendar, Clock, FileText, Building2 } from 'lucide-react'
 interface BookingModalProps {
   booking: Booking
   onClose: () => void
+  onBookingUpdated?: (booking: Booking) => void
 }
 
-export default function BookingModal({ booking, onClose }: BookingModalProps) {
+export default function BookingModal({ booking, onClose, onBookingUpdated }: BookingModalProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [currentStatus, setCurrentStatus] = useState(() => {
     const status = booking.metadata?.status
@@ -75,7 +76,13 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
         throw new Error('Failed to update booking status')
       }
 
+      const { booking: updatedBooking } = await response.json()
       setCurrentStatus(newStatus)
+      
+      // Notify parent component of the updated booking
+      if (onBookingUpdated) {
+        onBookingUpdated(updatedBooking)
+      }
       
       // Show success toast
       showToast(`Booking ${newStatus.toLowerCase()} successfully!`, 'success')

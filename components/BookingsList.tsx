@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Booking } from '@/types'
 import { formatDate, formatTime, formatDuration } from '@/lib/availability'
 import BookingModal from './BookingModal'
@@ -11,8 +11,18 @@ interface BookingsListProps {
   onBookingClick?: (booking: Booking) => void
 }
 
-export default function BookingsList({ bookings, onBookingClick }: BookingsListProps) {
+export default function BookingsList({ bookings: initialBookings, onBookingClick }: BookingsListProps) {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings)
+
+  // Callback to handle booking updates
+  const handleBookingUpdated = useCallback((updatedBooking: Booking) => {
+    setBookings(prevBookings => 
+      prevBookings.map(booking => 
+        booking.id === updatedBooking.id ? updatedBooking : booking
+      )
+    )
+  }, [])
 
   if (!bookings || bookings.length === 0) {
     return (
@@ -149,6 +159,7 @@ export default function BookingsList({ bookings, onBookingClick }: BookingsListP
         <BookingModal
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
+          onBookingUpdated={handleBookingUpdated}
         />
       )}
     </>
