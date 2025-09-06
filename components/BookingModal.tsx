@@ -8,9 +8,10 @@ import { X, User, Calendar, Clock, FileText, Building2 } from 'lucide-react'
 interface BookingModalProps {
   booking: Booking
   onClose: () => void
+  onBookingUpdated?: (booking: Booking) => void
 }
 
-export default function BookingModal({ booking, onClose }: BookingModalProps) {
+export default function BookingModal({ booking, onClose, onBookingUpdated }: BookingModalProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [currentStatus, setCurrentStatus] = useState(() => {
     const status = booking.metadata?.status
@@ -28,6 +29,34 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
   const attendeeName = booking.metadata?.attendee_name
   const attendeeEmail = booking.metadata?.attendee_email
   const notes = booking.metadata?.notes
+
+  // Toast notification function
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    // Create toast element
+    const toast = document.createElement('div')
+    toast.className = `fixed top-4 right-4 z-[60] px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 ${
+      type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`
+    toast.textContent = message
+    
+    // Add to DOM
+    document.body.appendChild(toast)
+    
+    // Animate in
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)'
+      toast.style.opacity = '1'
+    }, 10)
+    
+    // Remove after delay
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)'
+      toast.style.opacity = '0'
+      setTimeout(() => {
+        document.body.removeChild(toast)
+      }, 300)
+    }, 3000)
+  }
 
   const handleStatusUpdate = async (newStatus: string) => {
     setIsUpdating(true)
@@ -47,10 +76,25 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
         throw new Error('Failed to update booking status')
       }
 
+      const { booking: updatedBooking } = await response.json()
       setCurrentStatus(newStatus)
+      
+      // Notify parent component of the updated booking
+      if (onBookingUpdated) {
+        onBookingUpdated(updatedBooking)
+      }
+      
+      // Show success toast
+      showToast(`Booking ${newStatus.toLowerCase()} successfully!`, 'success')
+      
+      // Close modal after brief delay to show toast
+      setTimeout(() => {
+        onClose()
+      }, 1000)
+      
     } catch (error) {
       console.error('Error updating booking status:', error)
-      alert('Failed to update booking status. Please try again.')
+      showToast('Failed to update booking status. Please try again.', 'error')
     } finally {
       setIsUpdating(false)
     }
@@ -79,6 +123,7 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUpdating}
           >
             <X className="w-5 h-5" />
           </button>
@@ -98,27 +143,27 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
                 <button
                   onClick={() => handleStatusUpdate('Confirmed')}
                   disabled={isUpdating}
-                  className="btn btn-sm bg-green-600 hover:bg-green-700 text-white"
+                  className="btn btn-sm bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm
+                  {isUpdating ? 'Updating...' : 'Confirm'}
                 </button>
               )}
               {currentStatus !== 'Completed' && (
                 <button
                   onClick={() => handleStatusUpdate('Completed')}
                   disabled={isUpdating}
-                  className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white"
+                  className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Complete
+                  {isUpdating ? 'Updating...' : 'Complete'}
                 </button>
               )}
               {currentStatus !== 'Cancelled' && (
                 <button
                   onClick={() => handleStatusUpdate('Cancelled')}
                   disabled={isUpdating}
-                  className="btn btn-sm bg-red-600 hover:bg-red-700 text-white"
+                  className="btn btn-sm bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {isUpdating ? 'Updating...' : 'Cancel'}
                 </button>
               )}
             </div>
@@ -246,6 +291,7 @@ export default function BookingModal({ booking, onClose }: BookingModalProps) {
           <button
             onClick={onClose}
             className="btn btn-secondary"
+            disabled={isUpdating}
           >
             Close
           </button>
