@@ -39,21 +39,49 @@ export default function MeetingDetailsModal({
     })
   }
 
+  // Toast notification function
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    // Create toast element
+    const toast = document.createElement('div')
+    toast.className = `fixed top-4 right-4 z-[60] px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 ${
+      type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`
+    toast.textContent = message
+    
+    // Add to DOM
+    document.body.appendChild(toast)
+    
+    // Animate in
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)'
+      toast.style.opacity = '1'
+    }, 10)
+    
+    // Remove after delay
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)'
+      toast.style.opacity = '0'
+      setTimeout(() => {
+        document.body.removeChild(toast)
+      }, 300)
+    }, 3000)
+  }
+
   // Handle escape key press
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !isUpdating) {
         onClose()
       }
     }
 
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose])
+  }, [onClose, isUpdating])
 
   // Handle clicking outside the modal to close it
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && !isUpdating) {
       onClose()
     }
   }
@@ -77,10 +105,27 @@ export default function MeetingDetailsModal({
 
       const { booking: updatedBooking } = await response.json()
       onBookingUpdated(updatedBooking)
-      onClose()
+      
+      // Show success toast based on the action
+      let message = 'Booking updated successfully!'
+      if (newStatus.key === 'completed') {
+        message = 'Booking marked as completed!'
+      } else if (newStatus.key === 'cancelled') {
+        message = 'Booking cancelled successfully!'
+      } else if (newStatus.key === 'confirmed') {
+        message = 'Booking confirmed successfully!'
+      }
+      
+      showToast(message, 'success')
+      
+      // Close modal after brief delay to show toast
+      setTimeout(() => {
+        onClose()
+      }, 1000)
+      
     } catch (error) {
       console.error('Error updating booking status:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update booking status')
+      showToast(error instanceof Error ? error.message : 'Failed to update booking status', 'error')
     } finally {
       setIsUpdating(false)
     }
@@ -115,7 +160,8 @@ export default function MeetingDetailsModal({
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              disabled={isUpdating}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <X className="w-6 h-6" />
             </button>
@@ -172,7 +218,7 @@ export default function MeetingDetailsModal({
                 <button
                   onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
                   disabled={isUpdating}
-                  className="w-full btn btn-primary disabled:opacity-50"
+                  className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? 'Updating...' : 'Confirm'}
                 </button>
@@ -182,7 +228,7 @@ export default function MeetingDetailsModal({
                 <button
                   onClick={() => handleStatusUpdate({ key: 'completed', value: 'Completed' })}
                   disabled={isUpdating}
-                  className="w-full btn btn-accent disabled:opacity-50"
+                  className="w-full btn btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? 'Updating...' : 'Mark as Completed'}
                 </button>
@@ -192,7 +238,7 @@ export default function MeetingDetailsModal({
                 <button
                   onClick={() => handleStatusUpdate({ key: 'cancelled', value: 'Cancelled' })}
                   disabled={isUpdating}
-                  className="w-full btn bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                  className="w-full btn bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? 'Updating...' : 'Cancel Meeting'}
                 </button>
@@ -202,7 +248,7 @@ export default function MeetingDetailsModal({
                 <button
                   onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
                   disabled={isUpdating}
-                  className="w-full btn btn-primary disabled:opacity-50"
+                  className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? 'Updating...' : 'Reconfirm Meeting'}
                 </button>
@@ -212,7 +258,8 @@ export default function MeetingDetailsModal({
             <div className="pt-4">
               <button
                 onClick={onClose}
-                className="w-full btn btn-secondary"
+                disabled={isUpdating}
+                className="w-full btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Close
               </button>
