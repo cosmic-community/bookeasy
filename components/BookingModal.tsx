@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Booking } from '@/types'
 import { formatTime, formatDate, formatDuration } from '@/lib/availability'
 import { X, User, Calendar, Clock, FileText, Building2 } from 'lucide-react'
@@ -12,6 +12,7 @@ interface BookingModalProps {
 }
 
 export default function BookingModal({ booking, onClose, onBookingUpdated }: BookingModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [currentStatus, setCurrentStatus] = useState(() => {
     const status = booking.metadata?.status
@@ -22,6 +23,32 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
     }
     return 'Confirmed'
   })
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
 
   const eventType = booking.metadata?.event_type
   const bookingDate = booking.metadata?.booking_date
@@ -115,7 +142,10 @@ export default function BookingModal({ booking, onClose, onBookingUpdated }: Boo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
             Booking Details

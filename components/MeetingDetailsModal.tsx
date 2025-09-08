@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Booking } from '@/types'
 import { formatDate, formatTime } from '@/lib/availability'
 
@@ -15,7 +15,34 @@ export default function MeetingDetailsModal({
   onClose,
   onBookingUpdated
 }: MeetingDetailsModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
 
   const handleStatusChange = async (newStatus: { key: string; value: string }) => {
     if (!booking.id) return
@@ -72,7 +99,10 @@ export default function MeetingDetailsModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-lg shadow-xl max-w-md w-full"
+      >
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
