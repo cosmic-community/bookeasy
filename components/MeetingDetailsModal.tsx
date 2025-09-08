@@ -1,138 +1,61 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Booking } from '@/types'
-import { X } from 'lucide-react'
+import { formatTime, formatDate } from '@/lib/availability'
 
 interface MeetingDetailsModalProps {
-  booking: Booking
+  isOpen: boolean
   onClose: () => void
-  onBookingUpdated: (booking: Booking) => void
+  booking: Booking | null
 }
 
-export default function MeetingDetailsModal({ 
-  booking, 
-  onClose, 
-  onBookingUpdated 
+export default function MeetingDetailsModal({
+  isOpen,
+  onClose,
+  booking
 }: MeetingDetailsModalProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
-
-  const eventType = booking.metadata?.event_type
-  
-  // Helper function to safely get status key and value
-  const getStatusInfo = (status: string | { key: string; value: string } | undefined) => {
-    if (!status) return { key: 'unknown', value: 'Unknown' }
-    if (typeof status === 'string') return { key: status, value: status }
-    return status
-  }
-
-  const statusInfo = getStatusInfo(booking.metadata?.status)
-  
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  // Toast notification function
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    // Create toast element
-    const toast = document.createElement('div')
-    toast.className = `fixed top-4 right-4 z-[60] px-6 py-4 rounded-lg shadow-lg text-white font-medium transition-all duration-300 ${
-      type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    }`
-    toast.textContent = message
-    
-    // Add to DOM
-    document.body.appendChild(toast)
-    
-    // Animate in
-    setTimeout(() => {
-      toast.style.transform = 'translateX(0)'
-      toast.style.opacity = '1'
-    }, 10)
-    
-    // Remove after delay
-    setTimeout(() => {
-      toast.style.transform = 'translateX(100%)'
-      toast.style.opacity = '0'
-      setTimeout(() => {
-        document.body.removeChild(toast)
-      }, 300)
-    }, 3000)
-  }
 
   // Handle escape key press
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isUpdating) {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         onClose()
       }
     }
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose, isUpdating])
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscapeKey)
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
 
-  // Handle clicking outside the modal to close it
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget && !isUpdating) {
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey)
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen, onClose])
+
+  // Handle click outside modal
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
       onClose()
     }
   }
 
-  const handleStatusUpdate = async (newStatus: { key: string; value: string }) => {
-    setIsUpdating(true)
-    
-    try {
-      const response = await fetch(`/api/bookings/${booking.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update booking status')
-      }
-
-      const { booking: updatedBooking } = await response.json()
-      onBookingUpdated(updatedBooking)
-      
-      // Show success toast based on the action
-      let message = 'Booking updated successfully!'
-      if (newStatus.key === 'completed') {
-        message = 'Booking marked as completed!'
-      } else if (newStatus.key === 'cancelled') {
-        message = 'Booking cancelled successfully!'
-      } else if (newStatus.key === 'confirmed') {
-        message = 'Booking confirmed successfully!'
-      }
-      
-      showToast(message, 'success')
-      
-      // Close modal after brief delay to show toast
-      setTimeout(() => {
-        onClose()
-      }, 1000)
-      
-    } catch (error) {
-      console.error('Error updating booking status:', error)
-      showToast(error instanceof Error ? error.message : 'Failed to update booking status', 'error')
-    } finally {
-      setIsUpdating(false)
-    }
+  if (!isOpen || !booking) {
+    return null
   }
 
-  const getStatusColor = (statusKey: string) => {
-    switch (statusKey) {
+  // Helper function to get status color
+  const getStatusColor = (status: string | { key: string; value: string } | undefined) => {
+    const statusValue = typeof status === 'string' ? status : status?.value || 'unknown'
+    const normalizedStatus = statusValue.toLowerCase()
+    
+    switch (normalizedStatus) {
       case 'confirmed':
         return 'bg-green-100 text-green-800'
       case 'cancelled':
@@ -144,126 +67,135 @@ export default function MeetingDetailsModal({
     }
   }
 
+  // Helper function to get status display text
+  const getStatusText = (status: string | { key: string; value: string } | undefined) => {
+    if (typeof status === 'string') {
+      return status
+    } else if (status?.value) {
+      return status.value
+    }
+    return 'Unknown'
+  }
+
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-      onClick={handleOverlayClick}
+      onClick={handleBackdropClick}
     >
       <div 
         ref={modalRef}
-        className="bg-white rounded-xl max-w-md w-full"
+        className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Meeting Details
+              Booking Details
             </h2>
             <button
               onClick={onClose}
-              disabled={isUpdating}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close modal"
             >
-              <X className="w-6 h-6" />
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">
-                {booking.metadata?.attendee_name}
+          <div className="space-y-6">
+            {/* Event Information */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-3">
+                {booking.metadata?.event_type?.metadata?.event_name || 
+                 booking.metadata?.event_type?.title || 
+                 'Event'}
               </h3>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(statusInfo.key)}`}>
-                {statusInfo.value}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div>
-                <span className="font-medium text-gray-700">Email:</span>
-                <p className="text-gray-600">{booking.metadata?.attendee_email}</p>
-              </div>
-
-              <div>
-                <span className="font-medium text-gray-700">Meeting Type:</span>
-                <p className="text-gray-600">
-                  {eventType?.metadata?.event_name || eventType?.title || 'Unknown Event'}
+              
+              {booking.metadata?.event_type?.metadata?.description && (
+                <p className="text-gray-600 text-sm mb-4">
+                  {booking.metadata.event_type.metadata.description}
                 </p>
-              </div>
+              )}
 
-              <div>
-                <span className="font-medium text-gray-700">Date & Time:</span>
-                <p className="text-gray-600">
-                  {booking.metadata?.booking_date && formatDate(booking.metadata.booking_date)} at {booking.metadata?.booking_time}
-                </p>
-              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex items-center text-sm">
+                    <svg className="w-4 h-4 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-gray-900 font-medium">
+                      {booking.metadata?.booking_date ? formatDate(booking.metadata.booking_date) : 'Date not available'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <svg className="w-4 h-4 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-gray-900 font-medium">
+                      {booking.metadata?.booking_time ? formatTime(booking.metadata.booking_time) : 'Time not available'}
+                      {booking.metadata?.event_type?.metadata?.duration && (
+                        <span className="text-gray-500 ml-1">
+                          ({booking.metadata.event_type.metadata.duration} minutes)
+                        </span>
+                      )}
+                    </span>
+                  </div>
 
-              {booking.metadata?.notes && (
-                <div>
-                  <span className="font-medium text-gray-700">Notes:</span>
-                  <p className="text-gray-600">{booking.metadata.notes}</p>
+                  <div className="flex items-center text-sm">
+                    <svg className="w-4 h-4 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.metadata?.status)}`}>
+                      {getStatusText(booking.metadata?.status)}
+                    </span>
+                  </div>
                 </div>
-              )}
-
-              <div>
-                <span className="font-medium text-gray-700">Duration:</span>
-                <p className="text-gray-600">
-                  {eventType?.metadata?.duration || 30} minutes
-                </p>
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-col space-y-2 pt-6 border-t border-gray-200">
-              {statusInfo.key !== 'confirmed' && statusInfo.key !== 'completed' && (
-                <button
-                  onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
-                  disabled={isUpdating}
-                  className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Confirm'}
-                </button>
-              )}
-              
-              {statusInfo.key !== 'completed' && (
-                <button
-                  onClick={() => handleStatusUpdate({ key: 'completed', value: 'Completed' })}
-                  disabled={isUpdating}
-                  className="w-full btn btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Mark as Completed'}
-                </button>
-              )}
-              
-              {statusInfo.key !== 'cancelled' && statusInfo.key !== 'completed' && (
-                <button
-                  onClick={() => handleStatusUpdate({ key: 'cancelled', value: 'Cancelled' })}
-                  disabled={isUpdating}
-                  className="w-full btn bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Cancel Meeting'}
-                </button>
-              )}
-              
-              {statusInfo.key === 'cancelled' && (
-                <button
-                  onClick={() => handleStatusUpdate({ key: 'confirmed', value: 'Confirmed' })}
-                  disabled={isUpdating}
-                  className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Updating...' : 'Reconfirm Meeting'}
-                </button>
-              )}
+            {/* Attendee Information */}
+            <div>
+              <h4 className="text-md font-medium text-gray-900 mb-3">
+                Attendee Information
+              </h4>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <svg className="w-4 h-4 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="text-gray-900 font-medium">
+                      {booking.metadata?.attendee_name || 'Name not provided'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <svg className="w-4 h-4 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-gray-900">
+                      {booking.metadata?.attendee_email || 'Email not provided'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="pt-4">
-              <button
-                onClick={onClose}
-                disabled={isUpdating}
-                className="w-full btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Close
-              </button>
-            </div>
+            {/* Notes */}
+            {booking.metadata?.notes && (
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-3">
+                  Additional Notes
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                    {booking.metadata.notes}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

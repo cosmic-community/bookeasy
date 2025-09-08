@@ -253,7 +253,13 @@ export default function BookingForm({ eventType, date, time, onSuccess, settings
   const renderTimezone = (): string | null => {
     try {
       const timezone = settings?.metadata?.timezone
-      return timezone ? String(timezone) : null
+      // FIXED: Handle timezone object properly
+      if (typeof timezone === 'string') {
+        return timezone
+      } else if (timezone && typeof timezone === 'object' && 'value' in timezone) {
+        return String(timezone.value)
+      }
+      return null
     } catch (error) {
       console.error('Error getting timezone:', error)
       return null
