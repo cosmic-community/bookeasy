@@ -29,10 +29,12 @@ export default async function HomePage() {
   }
 
   // Check if user is authenticated by looking for access code cookie
-  const cookieStore = cookies()
+  // FIXED: In Next.js 15, cookies() returns a Promise that must be awaited
+  const cookieStore = await cookies()
   const accessCodeCookie = cookieStore.get('access_code')
   const requiredAccessCode = process.env.ACCESS_CODE
-  const isAuthenticated = accessCodeCookie?.value === requiredAccessCode && requiredAccessCode
+  // FIXED: Ensure boolean type by converting to boolean explicitly
+  const isAuthenticated: boolean = !!(accessCodeCookie?.value === requiredAccessCode && requiredAccessCode)
 
   // Get featured event types (first 2) and regular event types
   const featuredEventTypes = eventTypes.slice(0, 2)
