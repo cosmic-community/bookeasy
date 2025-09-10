@@ -11,7 +11,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header settings={settings} />
+      <Header settings={settings} showAdminLinks={true} />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
