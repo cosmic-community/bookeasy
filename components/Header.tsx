@@ -12,30 +12,41 @@ interface HeaderProps {
 
 export default function Header({ settings, showAdminLinks = false }: HeaderProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  const handleLogout = () => {
-    // Clear the access code cookie with all possible variations to ensure complete logout
-    const cookieOptions = [
-      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;',
-      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=' + window.location.hostname + ';',
-      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; secure; samesite=strict;'
-    ]
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
     
-    // Apply all cookie clearing variations to ensure complete removal
-    cookieOptions.forEach(cookieString => {
-      document.cookie = cookieString
-    })
-    
-    // Also clear any potential browser storage
     try {
-      localStorage.removeItem('access_code')
-      sessionStorage.removeItem('access_code')
-    } catch (e) {
-      // Ignore storage errors
+      // Call the logout API route to clear the httpOnly cookie
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Clear any client-side storage as backup
+        try {
+          localStorage.removeItem('access_code')
+          sessionStorage.removeItem('access_code')
+        } catch (e) {
+          // Ignore storage errors
+        }
+
+        // Force redirect to home page and reload to clear any cached state
+        window.location.replace('/')
+      } else {
+        console.error('Logout failed')
+        setIsLoggingOut(false)
+        setShowLogoutConfirm(false)
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+      setIsLoggingOut(false)
+      setShowLogoutConfirm(false)
     }
-    
-    // Force redirect to home page and reload to clear any cached state
-    window.location.replace('/')
   }
 
   return (
@@ -83,9 +94,10 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
                 <button
                   onClick={() => setShowLogoutConfirm(true)}
                   className="flex items-center space-x-2 text-gray-600 hover:text-red-600 transition-colors"
+                  disabled={isLoggingOut}
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                 </button>
               </nav>
             )}
@@ -107,14 +119,23 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
               <button
                 onClick={() => setShowLogoutConfirm(false)}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                disabled={isLoggingOut}
               >
                 Cancel
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                disabled={isLoggingOut}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-400 disabled:cursor-not-allowed"
               >
-                Logout
+                {isLoggingOut ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Logging out...
+                  </div>
+                ) : (
+                  'Logout'
+                )}
               </button>
             </div>
           </div>
