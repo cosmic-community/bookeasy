@@ -1,4 +1,8 @@
 import { BookingEmailData } from '@/types'
+import { Resend } from 'resend'
+
+// Initialize Resend - only if API key is available
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 export function generateBookingConfirmationEmail(data: BookingEmailData): { subject: string; html: string } {
   const subject = `✅ Booking Confirmed: ${data.eventName} on ${data.bookingDate}`
@@ -658,4 +662,57 @@ export function generateBookingNotificationEmail(data: BookingEmailData): { subj
   `
   
   return { subject, html }
+}
+
+// Email sending functions using Resend
+export async function sendAttendeeConfirmation(data: BookingEmailData): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.warn('RESEND_API_KEY not configured - email notifications disabled')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const { subject, html } = generateBookingConfirmationEmail(data)
+    
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL || 'bookings@yourdomain.com',
+      to: [data.attendeeEmail],
+      subject: subject,
+      html: html,
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send attendee confirmation email:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+export async function sendHostNotification(data: BookingEmailData, hostEmail: string): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.warn('RESEND_API_KEY not configured - email notifications disabled')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const { subject, html } = generateBookingNotificationEmail(data)
+    
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL || 'bookings@yourdomain.com',
+      to: [hostEmail],
+      subject: subject,
+      html: html,
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send host notification email:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
 }
