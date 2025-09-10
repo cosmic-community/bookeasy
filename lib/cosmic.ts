@@ -51,7 +51,7 @@ export async function getEventType(slug: string): Promise<EventType | null> {
   }
 }
 
-// Get all bookings
+// Get all bookings (filtered for future dates and sorted by booking_date)
 export async function getBookings(): Promise<Booking[]> {
   try {
     const response = await cosmic.objects
@@ -59,7 +59,36 @@ export async function getBookings(): Promise<Booking[]> {
       .props(['id', 'title', 'slug', 'metadata'])
       .depth(1);
     
-    return response.objects as Booking[];
+    const bookings = response.objects as Booking[];
+    
+    // Get today's date in YYYY-MM-DD format with proper error handling
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
+    // FIXED: Add explicit check for todayString to prevent TS18048 error
+    if (!todayString) {
+      console.error('Failed to generate today date string');
+      return bookings; // Return all bookings if date parsing fails
+    }
+    
+    // Filter for future events and sort by booking_date
+    const futureBookings = bookings
+      .filter(booking => {
+        const bookingDate = booking.metadata?.booking_date;
+        if (!bookingDate) return false;
+        
+        // Only include bookings that are today or in the future
+        return bookingDate >= todayString;
+      })
+      .sort((a, b) => {
+        const dateA = a.metadata?.booking_date || '';
+        const dateB = b.metadata?.booking_date || '';
+        
+        // Sort by booking_date ascending (earliest first)
+        return dateA.localeCompare(dateB);
+      });
+    
+    return futureBookings;
   } catch (error) {
     if (hasStatus(error) && error.status === 404) {
       return [];
