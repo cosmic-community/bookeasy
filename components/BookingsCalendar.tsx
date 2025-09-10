@@ -10,15 +10,15 @@ import { Calendar, List, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-rea
 
 interface BookingsCalendarProps {
   bookings: Booking[]
-  onBookingUpdated: () => void
 }
 
-export default function BookingsCalendar({ bookings, onBookingUpdated }: BookingsCalendarProps) {
+export default function BookingsCalendar({ bookings: initialBookings }: BookingsCalendarProps) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings)
 
   const handleDateClick = useCallback((date: string) => {
     setSelectedDate(date)
@@ -32,11 +32,20 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
     setSelectedBooking(null)
   }, [])
 
-  const handleBookingUpdatedCallback = useCallback(() => {
+  const handleBookingUpdated = useCallback(() => {
+    // Refresh the page to get updated data from server
     router.refresh()
-    onBookingUpdated()
     setSelectedBooking(null)
-  }, [router, onBookingUpdated])
+  }, [router])
+
+  const handleBookingUpdatedInList = useCallback((updatedBooking: Booking) => {
+    // Update the local state with the updated booking
+    setBookings(prevBookings => 
+      prevBookings.map(booking => 
+        booking.id === updatedBooking.id ? updatedBooking : booking
+      )
+    )
+  }, [])
 
   const selectedDateBookings = selectedDate 
     ? bookings.filter(booking => {
@@ -255,6 +264,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
         <BookingsList 
           bookings={bookings}
           onBookingClick={handleBookingClick}
+          onBookingUpdated={handleBookingUpdatedInList}
         />
       )}
 
@@ -263,7 +273,7 @@ export default function BookingsCalendar({ bookings, onBookingUpdated }: Booking
         <MeetingDetailsModal
           booking={selectedBooking}
           onClose={handleCloseModal}
-          onBookingUpdated={handleBookingUpdatedCallback}
+          onBookingUpdated={handleBookingUpdated}
         />
       )}
     </div>

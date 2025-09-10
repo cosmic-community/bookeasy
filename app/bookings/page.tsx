@@ -5,7 +5,7 @@ import BookingsCalendar from '@/components/BookingsCalendar'
 import { Calendar } from 'lucide-react'
 import { Settings } from '@/types'
 
-// Force dynamic rendering
+// Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic'
 
 export default async function BookingsPage() {
@@ -28,12 +28,6 @@ export default async function BookingsPage() {
       }
     }
 
-    // Function to trigger page refresh (will be passed to calendar component)
-    const handleBookingUpdated = () => {
-      // This is a server component, so we can't use router.refresh() directly
-      // The calendar component will handle this via useRouter
-    }
-
     return (
       <div className="min-h-screen bg-gray-50">
         <Header settings={settings} showAdminLinks={true} />
@@ -52,8 +46,7 @@ export default async function BookingsPage() {
           </div>
 
           <BookingsCalendar 
-            bookings={bookings} 
-            onBookingUpdated={handleBookingUpdated}
+            bookings={bookings}
           />
         </main>
 
