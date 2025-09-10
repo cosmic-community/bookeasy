@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function AdminLoginForm() {
   const [accessCode, setAccessCode] = useState('')
@@ -46,85 +46,69 @@ export default function AdminLoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-            <Lock className="h-6 w-6 text-blue-600" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Admin Access Required
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Enter your access code to manage bookings and settings
-          </p>
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      <div>
+        <label htmlFor="access-code" className="sr-only">
+          Access Code
+        </label>
+        <div className="relative">
+          <input
+            id="access-code"
+            name="access-code"
+            type={showPassword ? 'text' : 'password'}
+            required
+            className="appearance-none rounded-lg relative block w-full px-3 py-3 pl-4 pr-12 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-lg"
+            placeholder="Enter access code"
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            onClick={() => setShowPassword(!showPassword)}
+            disabled={isLoading}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            ) : (
+              <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            )}
+          </button>
         </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="access-code" className="sr-only">
-              Access Code
-            </label>
-            <div className="relative">
-              <input
-                id="access-code"
-                name="access-code"
-                type={showPassword ? 'text' : 'password'}
-                required
-                className="appearance-none rounded-lg relative block w-full px-3 py-3 pl-4 pr-12 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-lg"
-                placeholder="Enter access code"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading || !accessCode}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Verifying...
-                </div>
-              ) : (
-                'Access Admin Panel'
-              )}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <a
-              href="/"
-              className="text-sm text-blue-600 hover:text-blue-500 transition-colors duration-200"
-            >
-              ← Back to Home
-            </a>
-          </div>
-        </form>
       </div>
-    </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      <div>
+        <button
+          type="submit"
+          disabled={isLoading || !accessCode}
+          className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+        >
+          {isLoading ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Verifying...
+            </div>
+          ) : (
+            'Access Admin Panel'
+          )}
+        </button>
+      </div>
+
+      <div className="text-center">
+        <a
+          href="/"
+          className="text-sm text-blue-600 hover:text-blue-500 transition-colors duration-200"
+        >
+          ← Back to Home
+        </a>
+      </div>
+    </form>
   )
 }
