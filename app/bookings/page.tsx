@@ -1,7 +1,7 @@
 import { getBookings, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import BookingsList from '@/components/BookingsList'
+import BookingsCalendar from '@/components/BookingsCalendar'
 import { Calendar } from 'lucide-react'
 import { Settings } from '@/types'
 
@@ -28,6 +28,12 @@ export default async function BookingsPage() {
       }
     }
 
+    // Function to trigger page refresh (will be passed to calendar component)
+    const handleBookingUpdated = () => {
+      // This is a server component, so we can't use router.refresh() directly
+      // The calendar component will handle this via useRouter
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
         <Header settings={settings} showAdminLinks={true} />
@@ -45,7 +51,10 @@ export default async function BookingsPage() {
             </p>
           </div>
 
-          <BookingsList bookings={bookings} />
+          <BookingsCalendar 
+            bookings={bookings} 
+            onBookingUpdated={handleBookingUpdated}
+          />
         </main>
 
         <Footer settings={settings} />
