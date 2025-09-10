@@ -24,7 +24,7 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo and site title */}
+            {/* Logo and site title - FIXED: Use correct property names */}
             <Link href="/" className="flex items-center space-x-3">
               {settings?.metadata?.company_logo?.imgix_url ? (
                 <img 

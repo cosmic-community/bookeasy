@@ -2,6 +2,7 @@ import { getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SettingsForm from '@/components/SettingsForm'
+import { Settings } from '@/types'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -9,8 +10,8 @@ export const dynamic = 'force-dynamic'
 export default async function SettingsPage() {
   const settingsResponse = await getSettings()
 
-  // Provide default settings if null
-  const settings = settingsResponse || {
+  // Provide default settings if null - FIXED: Create proper Settings object
+  const settings: Settings = settingsResponse || {
     id: 'default',
     slug: 'default',
     title: 'Default Settings',

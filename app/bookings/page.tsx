@@ -3,6 +3,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BookingsList from '@/components/BookingsList'
 import { Calendar } from 'lucide-react'
+import { Settings } from '@/types'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -14,8 +15,8 @@ export default async function BookingsPage() {
       getSettings()
     ])
 
-    // Provide default settings if null
-    const settings = settingsResponse || {
+    // Provide default settings if null - FIXED: Create proper Settings object
+    const settings: Settings = settingsResponse || {
       id: 'default',
       slug: 'default',
       title: 'Default Settings',
