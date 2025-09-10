@@ -51,7 +51,7 @@ export async function getEventType(slug: string): Promise<EventType | null> {
   }
 }
 
-// Get all bookings (filtered for future dates and sorted by booking_date)
+// Get all bookings (filtered for future dates and sorted by booking_date, then booking_time)
 export async function getBookings(): Promise<Booking[]> {
   try {
     const response = await cosmic.objects
@@ -71,7 +71,7 @@ export async function getBookings(): Promise<Booking[]> {
       return bookings; // Return all bookings if date parsing fails
     }
     
-    // Filter for future events and sort by booking_date
+    // Filter for future events and sort by booking_date, then by booking_time
     const futureBookings = bookings
       .filter(booking => {
         const bookingDate = booking.metadata?.booking_date;
@@ -83,9 +83,18 @@ export async function getBookings(): Promise<Booking[]> {
       .sort((a, b) => {
         const dateA = a.metadata?.booking_date || '';
         const dateB = b.metadata?.booking_date || '';
+        const timeA = a.metadata?.booking_time || '';
+        const timeB = b.metadata?.booking_time || '';
         
-        // Sort by booking_date ascending (earliest first)
-        return dateA.localeCompare(dateB);
+        // Primary sort by booking_date ascending (earliest first)
+        const dateComparison = dateA.localeCompare(dateB);
+        
+        // If dates are the same, sort by booking_time ascending (earliest first)
+        if (dateComparison === 0) {
+          return timeA.localeCompare(timeB);
+        }
+        
+        return dateComparison;
       });
     
     return futureBookings;
@@ -115,7 +124,14 @@ export async function getBookingsForDate(date: string): Promise<Booking[]> {
       .props(['id', 'title', 'slug', 'metadata'])
       .depth(1);
     
-    return response.objects as Booking[];
+    const bookings = response.objects as Booking[];
+    
+    // Sort bookings for this specific date by booking_time (earliest first)
+    return bookings.sort((a, b) => {
+      const timeA = a.metadata?.booking_time || '';
+      const timeB = b.metadata?.booking_time || '';
+      return timeA.localeCompare(timeB);
+    });
   } catch (error) {
     if (hasStatus(error) && error.status === 404) {
       return [];
