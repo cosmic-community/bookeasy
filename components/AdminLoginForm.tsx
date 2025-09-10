@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 
@@ -9,10 +9,18 @@ export default function AdminLoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get('redirect') || '/bookings'
+
+  // Auto-focus the input when component mounts
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,6 +63,7 @@ export default function AdminLoginForm() {
         </label>
         <div className="relative">
           <input
+            ref={inputRef}
             id="access-code"
             name="access-code"
             type={showPassword ? 'text' : 'password'}
@@ -67,9 +76,10 @@ export default function AdminLoginForm() {
           />
           <button
             type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center z-20"
             onClick={() => setShowPassword(!showPassword)}
             disabled={isLoading}
+            tabIndex={-1}
           >
             {showPassword ? (
               <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
