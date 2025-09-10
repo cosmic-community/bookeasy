@@ -3,20 +3,34 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BookingsList from '@/components/BookingsList'
 import { Calendar } from 'lucide-react'
+import { Settings } from '@/types'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
 export default async function BookingsPage() {
   try {
-    const [bookings, settings] = await Promise.all([
+    const [bookings, settingsResponse] = await Promise.all([
       getBookings(),
       getSettings()
     ])
 
+    // Provide default settings if null - FIXED: Create proper Settings object
+    const settings: Settings = settingsResponse || {
+      id: 'default',
+      slug: 'default',
+      title: 'Default Settings',
+      type: 'settings' as const,
+      created_at: new Date().toISOString(),
+      modified_at: new Date().toISOString(),
+      metadata: {
+        site_name: 'BookEasy'
+      }
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header settings={settings} />
+        <Header settings={settings} showAdminLinks={true} />
         
         <main className="container mx-auto px-4 py-8">
           <div className="mb-6">

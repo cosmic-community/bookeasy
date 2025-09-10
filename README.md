@@ -13,6 +13,7 @@ A modern, feature-rich appointment scheduling platform built with Next.js and Co
 - 🔔 **Email Notifications** - Automated booking confirmations and reminders
 - 📱 **Responsive Design** - Works perfectly on desktop, tablet, and mobile devices
 - ⚙️ **Settings Management** - Configure site settings, logos, and notification preferences
+- 🔒 **Admin Protection** - Secure access code protection for booking and settings management
 
 <!-- CLONE_PROJECT_BUTTON -->
 
@@ -65,12 +66,18 @@ bun install
 cp .env.example .env.local
 ```
 
-Add your Cosmic credentials:
+Add your Cosmic credentials and set up admin access:
 ```env
+# Cosmic API credentials
 COSMIC_BUCKET_SLUG=your-bucket-slug
 COSMIC_READ_KEY=your-read-key
 COSMIC_WRITE_KEY=your-write-key
+
+# Admin access code for managing bookings and settings
+ACCESS_CODE=your-secure-access-code
 ```
+
+⚠️ **Important**: Make sure to set a strong `ACCESS_CODE` to protect your admin areas. This code will be required to access the bookings management and settings pages.
 
 4. Run the development server
 ```bash
@@ -78,6 +85,30 @@ bun dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Admin Access
+
+### Accessing Admin Features
+
+The booking management (`/bookings`) and settings (`/settings`) pages are protected by an access code. To access these areas:
+
+1. Navigate to `/bookings` or `/settings`
+2. You'll be redirected to the admin login page
+3. Enter the access code you configured in your environment variables
+4. Once authenticated, you'll have access to admin features for 7 days
+
+### Admin Features
+
+- **Booking Management**: View, update, and manage all scheduled appointments
+- **Settings Configuration**: Update company information, logos, availability, and system preferences
+- **Secure Logout**: Clear admin session and require re-authentication
+
+### Security Notes
+
+- Access codes are stored securely using HTTP-only cookies
+- Sessions automatically expire after 7 days
+- Admin pages are completely inaccessible without the correct access code
+- The access code is only stored in server-side environment variables
 
 ## Cosmic SDK Examples
 
@@ -154,6 +185,16 @@ Make sure to set these environment variables in your deployment platform:
 - `COSMIC_BUCKET_SLUG` - Your Cosmic bucket slug
 - `COSMIC_READ_KEY` - Your Cosmic read key
 - `COSMIC_WRITE_KEY` - Your Cosmic write key
+- `ACCESS_CODE` - Secure access code for admin features (use a strong, unique password)
+
+### Production Security
+
+For production deployments:
+
+1. **Use a Strong Access Code**: Generate a secure, random access code (minimum 12 characters with mixed case, numbers, and symbols)
+2. **Environment Variables**: Never commit your actual access code to version control
+3. **HTTPS Only**: Ensure your deployment uses HTTPS to protect the access code in transit
+4. **Regular Updates**: Consider rotating your access code periodically for enhanced security
 
 ## Contributing
 

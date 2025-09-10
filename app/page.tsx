@@ -3,15 +3,29 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import EventTypeGrid from '@/components/EventTypeGrid'
 import CosmicBadge from '@/components/CosmicBadge'
+import { Settings } from '@/types'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const [eventTypes, settings] = await Promise.all([
+  const [eventTypes, settingsResponse] = await Promise.all([
     getEventTypes(),
     getSettings()
   ])
+
+  // Provide default settings if null - FIXED: Create proper Settings object
+  const settings: Settings = settingsResponse || {
+    id: 'default',
+    slug: 'default',
+    title: 'Default Settings',
+    type: 'settings' as const,
+    created_at: new Date().toISOString(),
+    modified_at: new Date().toISOString(),
+    metadata: {
+      site_name: 'BookEasy'
+    }
+  }
 
   // Get featured event types (first 2) and regular event types
   const featuredEventTypes = eventTypes.slice(0, 2)
@@ -27,7 +41,7 @@ export default async function HomePage() {
           <div className="container mx-auto px-4 py-16 text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Schedule a meeting with{' '}
-              {settings?.metadata?.site_name || 'us'}
+              {settings.metadata?.site_name || 'us'}
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
               Choose a time that works for you. We'll send you all the details via email.
