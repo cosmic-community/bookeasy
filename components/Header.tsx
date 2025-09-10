@@ -14,9 +14,28 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const handleLogout = () => {
-    // Clear the access code cookie by setting it to expire
-    document.cookie = 'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
-    window.location.href = '/'
+    // Clear the access code cookie with all possible variations to ensure complete logout
+    const cookieOptions = [
+      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;',
+      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=' + window.location.hostname + ';',
+      'access_code=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; secure; samesite=strict;'
+    ]
+    
+    // Apply all cookie clearing variations to ensure complete removal
+    cookieOptions.forEach(cookieString => {
+      document.cookie = cookieString
+    })
+    
+    // Also clear any potential browser storage
+    try {
+      localStorage.removeItem('access_code')
+      sessionStorage.removeItem('access_code')
+    } catch (e) {
+      // Ignore storage errors
+    }
+    
+    // Force redirect to home page and reload to clear any cached state
+    window.location.replace('/')
   }
 
   return (
