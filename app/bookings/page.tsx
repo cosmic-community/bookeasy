@@ -9,10 +9,23 @@ export const dynamic = 'force-dynamic'
 
 export default async function BookingsPage() {
   try {
-    const [bookings, settings] = await Promise.all([
+    const [bookings, settingsResponse] = await Promise.all([
       getBookings(),
       getSettings()
     ])
+
+    // Provide default settings if null
+    const settings = settingsResponse || {
+      id: 'default',
+      slug: 'default',
+      title: 'Default Settings',
+      type: 'settings' as const,
+      created_at: new Date().toISOString(),
+      modified_at: new Date().toISOString(),
+      metadata: {
+        site_name: 'BookEasy'
+      }
+    }
 
     return (
       <div className="min-h-screen bg-gray-50">

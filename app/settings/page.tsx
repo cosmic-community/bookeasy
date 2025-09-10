@@ -7,7 +7,20 @@ import SettingsForm from '@/components/SettingsForm'
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const settings = await getSettings()
+  const settingsResponse = await getSettings()
+
+  // Provide default settings if null
+  const settings = settingsResponse || {
+    id: 'default',
+    slug: 'default',
+    title: 'Default Settings',
+    type: 'settings' as const,
+    created_at: new Date().toISOString(),
+    modified_at: new Date().toISOString(),
+    metadata: {
+      site_name: 'BookEasy'
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,7 +36,7 @@ export default async function SettingsPage() {
           </p>
         </div>
 
-        <SettingsForm settings={settings} />
+        <SettingsForm settings={settingsResponse} />
       </main>
 
       <Footer settings={settings} />

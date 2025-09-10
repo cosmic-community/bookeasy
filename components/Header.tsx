@@ -26,10 +26,10 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
           <div className="flex items-center justify-between h-16">
             {/* Logo and site title */}
             <Link href="/" className="flex items-center space-x-3">
-              {settings?.metadata?.logo?.imgix_url ? (
+              {settings?.metadata?.company_logo?.imgix_url ? (
                 <img 
-                  src={`${settings.metadata.logo.imgix_url}?w=40&h=40&fit=crop&auto=format,compress`}
-                  alt={settings.metadata.company_name || 'Logo'}
+                  src={`${settings.metadata.company_logo.imgix_url}?w=40&h=40&fit=crop&auto=format,compress`}
+                  alt={settings.metadata.site_name || 'Logo'}
                   className="w-10 h-10 rounded-lg object-cover"
                   width={40}
                   height={40}
@@ -40,7 +40,7 @@ export default function Header({ settings, showAdminLinks = false }: HeaderProps
                 </div>
               )}
               <h1 className="text-xl font-bold text-gray-900">
-                {settings?.metadata?.company_name || 'BookEasy'}
+                {settings?.metadata?.site_name || 'BookEasy'}
               </h1>
             </Link>
 

@@ -15,13 +15,26 @@ interface PageProps {
 export default async function BookPage({ params }: PageProps) {
   const { slug } = await params
   
-  const [eventType, settings] = await Promise.all([
+  const [eventType, settingsResponse] = await Promise.all([
     getEventType(slug),
     getSettings()
   ])
 
   if (!eventType) {
     notFound()
+  }
+
+  // Provide default settings if null
+  const settings = settingsResponse || {
+    id: 'default',
+    slug: 'default',
+    title: 'Default Settings',
+    type: 'settings' as const,
+    created_at: new Date().toISOString(),
+    modified_at: new Date().toISOString(),
+    metadata: {
+      site_name: 'BookEasy'
+    }
   }
 
   return (
