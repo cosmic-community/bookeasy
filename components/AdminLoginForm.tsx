@@ -30,17 +30,19 @@ export default function AdminLoginForm() {
       })
 
       if (response.ok) {
+        // Keep loading state active during redirect
         // Redirect with access code as query parameter to set cookie
         const redirectUrl = new URL(redirectPath, window.location.origin)
         redirectUrl.searchParams.set('access_code', accessCode)
         window.location.href = redirectUrl.toString()
+        // Note: Don't set isLoading to false here - keep it true until redirect completes
       } else {
         setError('Invalid access code. Please try again.')
+        setIsLoading(false)
       }
     } catch (error) {
       console.error('Access code verification error:', error)
       setError('An error occurred. Please try again.')
-    } finally {
       setIsLoading(false)
     }
   }
