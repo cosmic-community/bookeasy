@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
     if (date) {
       // Get bookings for specific date
       const bookings = await getBookingsForDate(date)
-      return NextResponse.json({ bookings })
+      return NextResponse.json({ 
+        success: true,
+        bookings 
+      })
     } else {
       // Get all bookings
       const response = await cosmic.objects
@@ -18,12 +21,19 @@ export async function GET(request: NextRequest) {
         .depth(1)
         .limit(100)
       
-      return NextResponse.json({ bookings: response.objects })
+      return NextResponse.json({ 
+        success: true,
+        bookings: response.objects 
+      })
     }
   } catch (error) {
     console.error('Error fetching bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { 
+        success: false,
+        error: 'Failed to fetch bookings',
+        bookings: []
+      },
       { status: 500 }
     )
   }
@@ -128,6 +138,7 @@ export async function POST(request: NextRequest) {
     console.log('Booking created successfully:', newBooking.object.id)
 
     return NextResponse.json({ 
+      success: true,
       message: 'Booking created successfully',
       booking: newBooking.object 
     })

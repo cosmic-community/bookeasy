@@ -28,11 +28,15 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
       const response = await fetch(`/api/bookings?date=${date}`)
       const data = await response.json()
       
-      if (data.success && data.bookings) {
+      if (data.success && Array.isArray(data.bookings)) {
         setExistingBookings(data.bookings)
+      } else {
+        console.warn('Invalid bookings response:', data)
+        setExistingBookings([])
       }
     } catch (error) {
       console.error('Error fetching bookings:', error)
+      setExistingBookings([])
     } finally {
       setIsLoading(false)
     }
@@ -231,11 +235,17 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
                       p-3 text-sm rounded-lg border transition-colors
                       ${slot.available
                         ? 'border-gray-200 hover:border-primary hover:bg-primary/5 text-gray-900'
-                        : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed line-through'
                       }
                     `}
+                    title={slot.available ? undefined : 'This time slot is already booked'}
                   >
                     {formatTime(slot.time)}
+                    {!slot.available && (
+                      <span className="block text-xs text-gray-400 mt-1">
+                        Booked
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
