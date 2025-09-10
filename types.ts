@@ -70,6 +70,7 @@ interface Settings extends CosmicObject {
     };
     buffer_time?: number;
     email_notifications?: boolean;
+    notification_email?: string; // New field for receiving booking notifications
     // New availability settings
     default_start_time?: string;
     default_end_time?: string;
@@ -115,12 +116,25 @@ interface SettingsFormData {
   site_name: string;
   buffer_time: number;
   email_notifications: boolean;
+  notification_email: string; // New field
   default_start_time: string;
   default_end_time: string;
   default_available_days: string[];
   timezone: string;
   booking_window_days: number;
   minimum_notice_hours: number;
+}
+
+// Email notification interfaces
+interface BookingEmailData {
+  attendeeName: string;
+  attendeeEmail: string;
+  eventName: string;
+  bookingDate: string;
+  bookingTime: string;
+  duration: number;
+  notes?: string;
+  hostName?: string;
 }
 
 // Type guards
@@ -150,6 +164,7 @@ export type {
   BookingFormData,
   EventTypeFormData,
   SettingsFormData,
+  BookingEmailData,
   BookingStatus,
   TimezoneKey
 };

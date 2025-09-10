@@ -12,6 +12,7 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
     site_name: settings?.metadata?.site_name || 'BookEasy',
     buffer_time: settings?.metadata?.buffer_time || 15,
     email_notifications: settings?.metadata?.email_notifications ?? true,
+    notification_email: settings?.metadata?.notification_email || '',
     // New availability settings with defaults from existing data or fallbacks
     default_start_time: settings?.metadata?.default_start_time || '09:00',
     default_end_time: settings?.metadata?.default_end_time || '17:00',
@@ -119,19 +120,48 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
               </p>
             </div>
           </div>
+        </div>
 
-          <div className="mt-6">
-            <label className="flex items-center">
+        {/* Email Settings Card */}
+        <div className="card">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            📧 Email Settings
+          </h2>
+          
+          <div className="space-y-6">
+            <div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                  checked={Boolean(formData.email_notifications)}
+                  onChange={(e) => setFormData({ ...formData, email_notifications: e.target.checked })}
+                />
+                <span className="ml-2 text-sm text-gray-700">
+                  Send email notifications for new bookings
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                When enabled, you'll receive notifications and attendees will get confirmations
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="notification_email" className="block text-sm font-medium text-gray-700 mb-2">
+                Notification Email Address
+              </label>
               <input
-                type="checkbox"
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-                checked={Boolean(formData.email_notifications)}
-                onChange={(e) => setFormData({ ...formData, email_notifications: e.target.checked })}
+                type="email"
+                id="notification_email"
+                className="input"
+                value={formData.notification_email}
+                onChange={(e) => setFormData({ ...formData, notification_email: e.target.value })}
+                placeholder="notifications@yourdomain.com"
               />
-              <span className="ml-2 text-sm text-gray-700">
-                Send email notifications for new bookings
-              </span>
-            </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Email address to receive booking notifications. Leave empty to disable host notifications.
+              </p>
+            </div>
           </div>
         </div>
 

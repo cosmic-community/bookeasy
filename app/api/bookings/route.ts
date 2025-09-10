@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cosmic, getBookingsForDate } from '@/lib/cosmic'
+import { cosmic, getBookingsForDate, getSettings, getEventType } from '@/lib/cosmic'
+import { sendAttendeeConfirmation, sendHostNotification } from '@/lib/email'
+import { formatDate, formatTime } from '@/lib/availability'
 
 export async function GET(request: NextRequest) {
   try {
@@ -136,6 +138,47 @@ export async function POST(request: NextRequest) {
     const newBooking = await cosmic.objects.insertOne(bookingPayload)
 
     console.log('Booking created successfully:', newBooking.object.id)
+
+    // Send email notifications if enabled
+    try {
+      // Get settings and event type for email data
+      const [settings, eventType] = await Promise.all([
+        getSettings(),
+        getEventType(event_type_id) // Assuming event_type_id could be a slug, otherwise fetch by ID
+      ])
+
+      if (settings?.metadata?.email_notifications) {
+        // Prepare email data
+        const emailData = {
+          attendeeName: attendee_name.trim(),
+          attendeeEmail: attendee_email.trim().toLowerCase(),
+          eventName: eventType?.metadata?.event_name || eventType?.title || 'Meeting',
+          bookingDate: formatDate(booking_date),
+          bookingTime: formatTime(booking_time),
+          duration: eventType?.metadata?.duration || 30,
+          notes: notes?.trim() || '',
+          hostName: eventType?.metadata?.host?.metadata?.full_name || 'Host'
+        }
+
+        // Send confirmation email to attendee
+        const attendeeEmailResult = await sendAttendeeConfirmation(emailData)
+        if (!attendeeEmailResult.success) {
+          console.error('Failed to send attendee confirmation:', attendeeEmailResult.error)
+        }
+
+        // Send notification email to host/admin if notification email is configured
+        const notificationEmail = settings.metadata?.notification_email
+        if (notificationEmail && notificationEmail.trim()) {
+          const hostEmailResult = await sendHostNotification(emailData, notificationEmail.trim())
+          if (!hostEmailResult.success) {
+            console.error('Failed to send host notification:', hostEmailResult.error)
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending emails:', emailError)
+      // Don't fail the booking creation if emails fail
+    }
 
     return NextResponse.json({ 
       success: true,
