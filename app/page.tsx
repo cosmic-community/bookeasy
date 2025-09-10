@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { getEventTypes, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -27,13 +28,19 @@ export default async function HomePage() {
     }
   }
 
+  // Check if user is authenticated by looking for access code cookie
+  const cookieStore = cookies()
+  const accessCodeCookie = cookieStore.get('access_code')
+  const requiredAccessCode = process.env.ACCESS_CODE
+  const isAuthenticated = accessCodeCookie?.value === requiredAccessCode && requiredAccessCode
+
   // Get featured event types (first 2) and regular event types
   const featuredEventTypes = eventTypes.slice(0, 2)
   const regularEventTypes = eventTypes.slice(2)
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header settings={settings} />
+      <Header settings={settings} showAdminLinks={isAuthenticated} />
       
       <main>
         {/* Hero Section */}
