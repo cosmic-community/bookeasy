@@ -61,9 +61,15 @@ export async function getBookings(): Promise<Booking[]> {
     
     const bookings = response.objects as Booking[];
     
-    // Get today's date in YYYY-MM-DD format
+    // Get today's date in YYYY-MM-DD format with proper error handling
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
+    
+    // FIXED: Add explicit check for todayString to prevent TS18048 error
+    if (!todayString) {
+      console.error('Failed to generate today date string');
+      return bookings; // Return all bookings if date parsing fails
+    }
     
     // Filter for future events and sort by booking_date
     const futureBookings = bookings
