@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getEventType, getSettings } from '@/lib/cosmic'
+import { isAuthenticated } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Calendar from '@/components/Calendar'
@@ -18,9 +19,10 @@ interface PageProps {
 export default async function BookPage({ params }: PageProps) {
   const { slug } = await params
   
-  const [eventType, settingsResponse] = await Promise.all([
+  const [eventType, settingsResponse, isLoggedIn] = await Promise.all([
     getEventType(slug),
-    getSettings()
+    getSettings(),
+    isAuthenticated()
   ])
 
   if (!eventType) {
@@ -42,7 +44,7 @@ export default async function BookPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header settings={settings} />
+      <Header settings={settings} showAdminLinks={isLoggedIn} />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
