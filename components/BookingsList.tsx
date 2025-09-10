@@ -9,9 +9,10 @@ import { CalendarX2, Check, X, Clock, User, Mail, Calendar, FileText, ChevronRig
 interface BookingsListProps {
   bookings: Booking[]
   onBookingClick?: (booking: Booking) => void
+  onBookingUpdated?: (booking: Booking) => void
 }
 
-export default function BookingsList({ bookings: initialBookings, onBookingClick }: BookingsListProps) {
+export default function BookingsList({ bookings: initialBookings, onBookingClick, onBookingUpdated }: BookingsListProps) {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [bookings, setBookings] = useState<Booking[]>(initialBookings)
 
@@ -22,7 +23,12 @@ export default function BookingsList({ bookings: initialBookings, onBookingClick
         booking.id === updatedBooking.id ? updatedBooking : booking
       )
     )
-  }, [])
+    
+    // Also notify parent component if callback provided
+    if (onBookingUpdated) {
+      onBookingUpdated(updatedBooking)
+    }
+  }, [onBookingUpdated])
 
   if (!bookings || bookings.length === 0) {
     return (

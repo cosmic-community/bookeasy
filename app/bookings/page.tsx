@@ -1,11 +1,11 @@
 import { getBookings, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import BookingsList from '@/components/BookingsList'
+import BookingsCalendar from '@/components/BookingsCalendar'
 import { Calendar } from 'lucide-react'
 import { Settings } from '@/types'
 
-// Force dynamic rendering
+// Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic'
 
 export default async function BookingsPage() {
@@ -45,7 +45,9 @@ export default async function BookingsPage() {
             </p>
           </div>
 
-          <BookingsList bookings={bookings} />
+          <BookingsCalendar 
+            bookings={bookings}
+          />
         </main>
 
         <Footer settings={settings} />

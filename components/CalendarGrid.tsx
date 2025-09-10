@@ -1,159 +1,154 @@
 'use client'
 
 import { Booking } from '@/types'
+import { formatTime } from '@/lib/availability'
 
-export interface CalendarGridProps {
+interface CalendarGridProps {
   bookings: Booking[]
   currentMonth: Date
-  selectedDate: string
+  selectedDate?: string
   onDateClick: (date: string) => void
 }
 
 export default function CalendarGrid({ 
-  bookings,
-  currentMonth,
+  bookings, 
+  currentMonth, 
   selectedDate, 
   onDateClick 
 }: CalendarGridProps) {
-  const year = currentMonth.getFullYear()
-  const month = currentMonth.getMonth()
-  
-  // Generate calendar grid data
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const daysInMonth = lastDay.getDate()
-  const startingDayOfWeek = firstDay.getDay() // 0 = Sunday, 1 = Monday, etc.
-
-  // Create array of day objects
-  const calendarDays: Array<{
-    date: number | null
-    dateString: string | null
-    available: boolean
-    hasBookings?: boolean
-    bookingCount?: number
-    isPrevMonth?: boolean
-    isNextMonth?: boolean
-  }> = []
-
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    calendarDays.push({ date: null, dateString: null, available: false, isPrevMonth: true })
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+    const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+    const startDate = new Date(firstDay)
+    const endDate = new Date(lastDay)
+    
+    // Get first day of week (Sunday = 0)
+    const firstDayOfWeek = firstDay.getDay()
+    
+    // Start from the beginning of the week
+    startDate.setDate(firstDay.getDate() - firstDayOfWeek)
+    
+    // End at the end of the week
+    const lastDayOfWeek = lastDay.getDay()
+    endDate.setDate(lastDay.getDate() + (6 - lastDayOfWeek))
+    
+    const days = []
+    const currentDate = new Date(startDate)
+    
+    while (currentDate <= endDate) {
+      days.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    return days
   }
 
-  // Add all days in the current month
-  for (let date = 1; date <= daysInMonth; date++) {
-    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`
+  const getBookingsForDate = (date: Date): Booking[] => {
+    const dateStr = date.toISOString().split('T')[0]
+    if (!dateStr) return []
     
-    // Check if this date has bookings
-    const dayBookings = bookings.filter(booking => {
+    return bookings.filter(booking => {
       const bookingDate = booking.metadata?.booking_date
       if (!bookingDate) return false
       
       const bookingDateObj = new Date(bookingDate + 'T00:00:00')
-      const targetDateObj = new Date(dateString + 'T00:00:00')
+      const bookingDateStr = bookingDateObj.toISOString().split('T')[0]
       
-      return bookingDateObj.toDateString() === targetDateObj.toDateString()
-    })
-    
-    calendarDays.push({
-      date,
-      dateString,
-      available: true,
-      hasBookings: dayBookings.length > 0,
-      bookingCount: dayBookings.length
+      return bookingDateStr === dateStr
     })
   }
 
-  // Add empty cells to fill the rest of the grid (6 rows of 7 days = 42 total)
-  while (calendarDays.length < 42) {
-    calendarDays.push({ date: null, dateString: null, available: false, isNextMonth: true })
+  const isToday = (date: Date): boolean => {
+    const today = new Date()
+    return date.toDateString() === today.toDateString()
   }
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-  const handleDayClick = (dateString: string | null) => {
-    if (dateString) {
-      const clickedDay = calendarDays.find(d => d.dateString === dateString)
-      if (clickedDay?.available) {
-        onDateClick(dateString)
-      }
-    }
+  const isCurrentMonth = (date: Date): boolean => {
+    return date.getMonth() === currentMonth.getMonth()
   }
+
+  const isSelected = (date: Date): boolean => {
+    if (!selectedDate) return false
+    const dateStr = date.toISOString().split('T')[0]
+    return dateStr === selectedDate
+  }
+
+  const calendarDays = generateCalendarDays()
 
   return (
-    <div className="w-full">
-      {/* Week day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {weekDays.map(day => (
-          <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+    <div>
+      {/* Calendar Header */}
+      <div className="grid grid-cols-7 gap-px mb-2">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <div
+            key={day}
+            className="p-2 text-center text-sm font-medium text-gray-500 bg-gray-50"
+          >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid - increased height for better wide screen display */}
-      <div className="grid grid-cols-7 gap-1">
-        {calendarDays.map((day, index) => {
-          const isSelected = day.dateString === selectedDate
-          const isToday = day.dateString === new Date().toISOString().split('T')[0]
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-px bg-gray-200">
+        {calendarDays.map((date, index) => {
+          const dayBookings = getBookingsForDate(date)
+          const dateStr = date.toISOString().split('T')[0]
+          
+          if (!dateStr) return null
           
           return (
             <div
               key={index}
-              className={`
-                aspect-square min-h-[80px] flex flex-col items-center justify-center text-sm border border-gray-100 cursor-pointer transition-all duration-200 rounded-lg relative
-                ${day.date === null
-                  ? 'bg-gray-50 cursor-not-allowed'
-                  : day.available
-                    ? isSelected
-                      ? 'bg-primary text-white border-primary shadow-md'
-                      : isToday
-                        ? 'bg-primary/10 border-primary/30 text-primary font-semibold hover:bg-primary hover:text-white'
-                        : 'bg-white hover:bg-primary hover:text-white border-gray-200 hover:border-primary hover:shadow-md'
-                    : 'bg-gray-50 text-gray-300 cursor-not-allowed border-gray-100'
-                }
-              `}
-              onClick={() => handleDayClick(day.dateString)}
+              onClick={() => onDateClick(dateStr)}
+              className={`min-h-[100px] p-1 bg-white hover:bg-gray-50 cursor-pointer transition-colors ${
+                isSelected(date) ? 'ring-2 ring-primary bg-primary/5' : ''
+              }`}
             >
-              {day.date && (
-                <>
-                  <span className="font-medium">
-                    {day.date}
-                  </span>
-                  {day.hasBookings && day.bookingCount && (
-                    <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isSelected ? 'bg-white text-primary' : 'bg-primary text-white'
-                    }`}>
-                      {day.bookingCount}
+              <div className={`text-sm font-medium mb-1 ${
+                isToday(date) 
+                  ? 'text-primary font-bold' 
+                  : isCurrentMonth(date) 
+                  ? 'text-gray-900' 
+                  : 'text-gray-400'
+              }`}>
+                {date.getDate()}
+              </div>
+              
+              <div className="space-y-1">
+                {dayBookings.slice(0, 3).map((booking, bookingIndex) => {
+                  const status = booking.metadata?.status
+                  const statusValue = typeof status === 'string' ? status : status?.value || 'confirmed'
+                  
+                  return (
+                    <div
+                      key={bookingIndex}
+                      className={`text-xs p-1 rounded text-white truncate ${
+                        statusValue.toLowerCase() === 'confirmed' 
+                          ? 'bg-green-500'
+                          : statusValue.toLowerCase() === 'cancelled'
+                          ? 'bg-red-500'
+                          : statusValue.toLowerCase() === 'completed'
+                          ? 'bg-blue-500'
+                          : 'bg-gray-500'
+                      }`}
+                      title={`${booking.metadata?.attendee_name} at ${booking.metadata?.booking_time ? formatTime(booking.metadata.booking_time) : 'No time'}`}
+                    >
+                      {booking.metadata?.booking_time ? formatTime(booking.metadata.booking_time) : 'No time'} {booking.metadata?.attendee_name}
                     </div>
-                  )}
-                </>
-              )}
+                  )
+                })}
+                
+                {dayBookings.length > 3 && (
+                  <div className="text-xs text-gray-500 font-medium">
+                    +{dayBookings.length - 3} more
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
-      </div>
-      
-      {/* Legend */}
-      <div className="flex items-center justify-center mt-4 space-x-6 text-xs text-gray-600">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-primary rounded border"></div>
-          <span>Available</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-gray-200 rounded border"></div>
-          <span>Not Available</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-primary/10 border border-primary/30 rounded"></div>
-          <span>Today</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-primary rounded border relative">
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center text-xs font-bold text-primary">1</div>
-          </div>
-          <span>Has Bookings</span>
-        </div>
       </div>
     </div>
   )
