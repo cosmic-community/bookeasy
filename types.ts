@@ -39,6 +39,7 @@ interface EventType extends CosmicObject {
     available_days?: string[];
     start_time?: string;
     end_time?: string;
+    meeting_link?: string;
   };
 }
 
@@ -135,6 +136,7 @@ interface BookingEmailData {
   duration: number;
   notes?: string;
   hostName?: string;
+  meetingLink?: string; // Added meeting link field
 }
 
 // Type guards

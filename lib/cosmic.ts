@@ -30,16 +30,33 @@ export async function getEventTypes(): Promise<EventType[]> {
   }
 }
 
-// Get a specific event type by slug
-export async function getEventType(slug: string): Promise<EventType | null> {
+// Get a specific event type by slug or ID
+export async function getEventType(slugOrId: string): Promise<EventType | null> {
   try {
-    const response = await cosmic.objects
-      .findOne({ 
-        type: 'event-types',
-        slug
-      })
-      .props(['id', 'title', 'slug', 'metadata'])
-      .depth(1);
+    // First try to find by slug
+    let response;
+    try {
+      response = await cosmic.objects
+        .findOne({ 
+          type: 'event-types',
+          slug: slugOrId
+        })
+        .props(['id', 'title', 'slug', 'metadata'])
+        .depth(1);
+    } catch (slugError) {
+      // If slug fails, try by ID
+      if (hasStatus(slugError) && slugError.status === 404) {
+        response = await cosmic.objects
+          .findOne({ 
+            type: 'event-types',
+            id: slugOrId
+          })
+          .props(['id', 'title', 'slug', 'metadata'])
+          .depth(1);
+      } else {
+        throw slugError;
+      }
+    }
     
     return response.object as EventType;
   } catch (error) {

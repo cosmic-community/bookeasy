@@ -144,11 +144,11 @@ export async function POST(request: NextRequest) {
       // Get settings and event type for email data
       const [settings, eventType] = await Promise.all([
         getSettings(),
-        getEventType(event_type_id) // Assuming event_type_id could be a slug, otherwise fetch by ID
+        getEventType(event_type_id) // This will work with both slug and ID
       ])
 
       if (settings?.metadata?.email_notifications) {
-        // Prepare email data
+        // Prepare email data with meeting link
         const emailData = {
           attendeeName: attendee_name.trim(),
           attendeeEmail: attendee_email.trim().toLowerCase(),
@@ -157,7 +157,8 @@ export async function POST(request: NextRequest) {
           bookingTime: formatTime(booking_time),
           duration: eventType?.metadata?.duration || 30,
           notes: notes?.trim() || '',
-          hostName: eventType?.metadata?.host?.metadata?.full_name || 'Host'
+          hostName: eventType?.metadata?.host?.metadata?.full_name || 'Host',
+          meetingLink: eventType?.metadata?.meeting_link || undefined // Add meeting link from event type
         }
 
         // Send confirmation email to attendee
