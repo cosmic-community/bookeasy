@@ -17,6 +17,7 @@ export default function MeetingDetailsModal({
 }: MeetingDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null)
 
   // Handle escape key
   useEffect(() => {
@@ -44,10 +45,21 @@ export default function MeetingDetailsModal({
     }
   }, [onClose])
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
+
   const handleStatusChange = async (newStatus: { key: string; value: string }) => {
     if (!booking.id) return
 
+    // Set optimistic status immediately for instant UI feedback
+    setOptimisticStatus(newStatus.value)
     setIsUpdating(true)
+    
     try {
       const response = await fetch(`/api/bookings/${booking.id}`, {
         method: 'PUT',
@@ -61,10 +73,15 @@ export default function MeetingDetailsModal({
         throw new Error('Failed to update booking')
       }
 
-      onBookingUpdated()
+      // Call the callback to refresh data in parent components
+      await onBookingUpdated()
+      
+      // Close modal after successful update and data refresh
       onClose()
     } catch (error) {
       console.error('Error updating booking:', error)
+      // Reset optimistic status on error
+      setOptimisticStatus(null)
       alert('Failed to update booking. Please try again.')
     } finally {
       setIsUpdating(false)
@@ -72,6 +89,11 @@ export default function MeetingDetailsModal({
   }
 
   const getStatusDisplay = () => {
+    // Use optimistic status if available, otherwise use booking status
+    if (optimisticStatus) {
+      return optimisticStatus
+    }
+    
     const status = booking.metadata?.status
     if (typeof status === 'string') {
       return status
@@ -82,8 +104,10 @@ export default function MeetingDetailsModal({
   }
 
   const getStatusColor = () => {
-    const status = booking.metadata?.status
-    const statusValue = typeof status === 'string' ? status : status?.value
+    // Use optimistic status if available for immediate visual feedback
+    const statusValue = optimisticStatus || (typeof booking.metadata?.status === 'string' 
+      ? booking.metadata.status 
+      : booking.metadata?.status?.value)
     
     switch (statusValue?.toLowerCase()) {
       case 'confirmed':
@@ -98,10 +122,10 @@ export default function MeetingDetailsModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg shadow-xl max-w-md w-full"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full mx-auto my-8"
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -111,6 +135,7 @@ export default function MeetingDetailsModal({
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={isUpdating}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -180,16 +205,16 @@ export default function MeetingDetailsModal({
               <button
                 onClick={() => handleStatusChange({ key: 'confirmed', value: 'Confirmed' })}
                 disabled={isUpdating}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium transition-colors"
               >
-                {isUpdating ? 'Updating...' : 'Confirm'}
+                {isUpdating && optimisticStatus === 'Confirmed' ? 'Updating...' : 'Confirm'}
               </button>
               <button
                 onClick={() => handleStatusChange({ key: 'cancelled', value: 'Cancelled' })}
                 disabled={isUpdating}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 text-sm font-medium transition-colors"
               >
-                {isUpdating ? 'Updating...' : 'Cancel'}
+                {isUpdating && optimisticStatus === 'Cancelled' ? 'Updating...' : 'Cancel'}
               </button>
             </div>
           </div>

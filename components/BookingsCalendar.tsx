@@ -62,8 +62,6 @@ export default function BookingsCalendar({ bookings: initialBookings, allBooking
       // Fallback to router refresh if API call fails
       router.refresh()
     }
-    
-    setSelectedBooking(null)
   }, [router])
 
   const handleBookingUpdatedInList = useCallback((updatedBooking: Booking) => {
