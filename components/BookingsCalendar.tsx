@@ -34,10 +34,34 @@ export default function BookingsCalendar({ bookings: initialBookings, allBooking
     setSelectedBooking(null)
   }, [])
 
-  const handleBookingUpdated = useCallback(() => {
-    // Refresh the page to get updated data from server
-    router.refresh()
-    setSelectedBooking(null)
+  const handleBookingUpdated = useCallback(async () => {
+    try {
+      // Fetch fresh booking data from the API
+      const response = await fetch('/api/bookings')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.bookings) {
+          // Update both booking lists with fresh data
+          const freshBookings = data.bookings
+          
+          // Filter future bookings for the main bookings list
+          const futureBookings = freshBookings.filter((booking: Booking) => {
+            if (!booking.metadata?.booking_date) return false
+            const bookingDate = new Date(booking.metadata.booking_date + 'T23:59:59')
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            return bookingDate >= today
+          })
+          
+          setBookings(futureBookings)
+          setAllBookings(freshBookings)
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing bookings:', error)
+      // Fallback to router refresh if API call fails
+      router.refresh()
+    }
   }, [router])
 
   const handleBookingUpdatedInList = useCallback((updatedBooking: Booking) => {
