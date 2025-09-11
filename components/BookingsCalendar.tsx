@@ -10,15 +10,17 @@ import { Calendar, List, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-rea
 
 interface BookingsCalendarProps {
   bookings: Booking[]
+  allBookings: Booking[] // New prop for calendar view (includes past bookings)
 }
 
-export default function BookingsCalendar({ bookings: initialBookings }: BookingsCalendarProps) {
+export default function BookingsCalendar({ bookings: initialBookings, allBookings: initialAllBookings }: BookingsCalendarProps) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [bookings, setBookings] = useState<Booking[]>(initialBookings)
+  const [allBookings, setAllBookings] = useState<Booking[]>(initialAllBookings)
 
   const handleDateClick = useCallback((date: string) => {
     setSelectedDate(date)
@@ -45,10 +47,15 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
         booking.id === updatedBooking.id ? updatedBooking : booking
       )
     )
+    setAllBookings(prevBookings => 
+      prevBookings.map(booking => 
+        booking.id === updatedBooking.id ? updatedBooking : booking
+      )
+    )
   }, [])
 
   const selectedDateBookings = selectedDate 
-    ? bookings.filter(booking => {
+    ? allBookings.filter(booking => {
         const bookingDate = booking.metadata?.booking_date
         if (!bookingDate) return false
         
@@ -101,7 +108,7 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
         </div>
         
         <div className="text-sm text-gray-600">
-          Total Bookings: <span className="font-medium text-gray-900">{bookings.length}</span>
+          Total Bookings: <span className="font-medium text-gray-900">{allBookings.length}</span>
         </div>
       </div>
 
@@ -143,7 +150,7 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
               </div>
 
               <CalendarGrid
-                bookings={bookings}
+                bookings={allBookings}
                 currentMonth={currentMonth}
                 selectedDate={selectedDate}
                 onDateClick={handleDateClick}
@@ -228,7 +235,7 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">This Month:</span>
                   <span className="font-medium">
-                    {bookings.filter(booking => {
+                    {allBookings.filter(booking => {
                       if (!booking.metadata?.booking_date) return false
                       const bookingDate = new Date(booking.metadata.booking_date)
                       return bookingDate.getMonth() === currentMonth.getMonth() &&
@@ -239,7 +246,7 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Confirmed:</span>
                   <span className="font-medium text-green-600">
-                    {bookings.filter(booking => {
+                    {allBookings.filter(booking => {
                       const status = booking.metadata?.status
                       return (typeof status === 'string' && (status === 'confirmed' || status === 'Confirmed')) ||
                              (typeof status === 'object' && status?.key === 'confirmed')
@@ -249,7 +256,7 @@ export default function BookingsCalendar({ bookings: initialBookings }: Bookings
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Completed:</span>
                   <span className="font-medium text-blue-600">
-                    {bookings.filter(booking => {
+                    {allBookings.filter(booking => {
                       const status = booking.metadata?.status
                       return (typeof status === 'string' && (status === 'completed' || status === 'Completed')) ||
                              (typeof status === 'object' && status?.key === 'completed')
