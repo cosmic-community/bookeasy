@@ -151,111 +151,153 @@ export default function Calendar({ eventType, settings }: CalendarProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6">
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={prevMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          <h2 className="text-lg font-semibold text-gray-900">
-            {currentMonth.toLocaleDateString('en-US', { 
-              month: 'long', 
-              year: 'numeric' 
-            })}
-          </h2>
-          
-          <button
-            onClick={nextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1 mb-6">
-          {/* Day headers */}
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-              {day}
+          {/* Left Column - Calendar Date Picker */}
+          <div className="space-y-6">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={prevMonth}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <h2 className="text-lg font-semibold text-gray-900">
+                {currentMonth.toLocaleDateString('en-US', { 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}
+              </h2>
+              
+              <button
+                onClick={nextMonth}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
-          ))}
-          
-          {/* Calendar days */}
-          {calendarDays.map((day, index) => (
-            <button
-              key={index}
-              onClick={() => day.isAvailable && day.date ? handleDateClick(day.date) : undefined}
-              disabled={!day.isAvailable}
-              className={`
-                p-2 text-sm aspect-square flex items-center justify-center rounded-lg transition-colors
-                ${!day.isCurrentMonth
-                  ? 'text-gray-300'
-                  : day.isAvailable
-                  ? day.isSelected
-                    ? 'bg-primary text-white'
-                    : day.isToday
-                    ? 'bg-primary/10 text-primary font-medium hover:bg-primary/20'
-                    : 'hover:bg-gray-100 text-gray-900'
-                  : 'text-gray-300 cursor-not-allowed'
-                }
-              `}
-            >
-              {day.day}
-            </button>
-          ))}
-        </div>
 
-        {/* Available Time Slots */}
-        {selectedDate && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Available times for {formatDate(selectedDate)}
-            </h3>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : availableSlots.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {availableSlots.map((slot) => (
-                  <button
-                    key={slot.time}
-                    onClick={() => slot.available ? handleTimeClick(slot.time) : undefined}
-                    disabled={!slot.available}
-                    className={`
-                      p-3 text-sm rounded-lg border transition-colors
-                      ${slot.available
-                        ? 'border-gray-200 hover:border-primary hover:bg-primary/5 text-gray-900'
-                        : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed line-through'
-                      }
-                    `}
-                    title={slot.available ? undefined : 'This time slot is already booked'}
-                  >
-                    {formatTime(slot.time)}
-                    {!slot.available && (
-                      <span className="block text-xs text-gray-400 mt-1">
-                        Booked
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-8">
-                No available time slots for this date
-              </p>
-            )}
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {/* Day headers */}
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                  {day}
+                </div>
+              ))}
+              
+              {/* Calendar days */}
+              {calendarDays.map((day, index) => (
+                <button
+                  key={index}
+                  onClick={() => day.isAvailable && day.date ? handleDateClick(day.date) : undefined}
+                  disabled={!day.isAvailable}
+                  className={`
+                    p-2 text-sm aspect-square flex items-center justify-center rounded-lg transition-colors
+                    ${!day.isCurrentMonth
+                      ? 'text-gray-300'
+                      : day.isAvailable
+                      ? day.isSelected
+                        ? 'bg-primary text-white'
+                        : day.isToday
+                        ? 'bg-primary/10 text-primary font-medium hover:bg-primary/20'
+                        : 'hover:bg-gray-100 text-gray-900'
+                      : 'text-gray-300 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {day.day}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Right Column - Time Picker */}
+          <div className="space-y-6">
+            <div className="sticky top-6">
+              {selectedDate ? (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Available times for {formatDate(selectedDate)}
+                  </h3>
+                  
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : availableSlots.length > 0 ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {availableSlots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          onClick={() => slot.available ? handleTimeClick(slot.time) : undefined}
+                          disabled={!slot.available}
+                          className={`
+                            w-full p-3 text-sm rounded-lg border transition-colors text-left
+                            ${slot.available
+                              ? 'border-gray-200 hover:border-primary hover:bg-primary/5 text-gray-900 hover:shadow-sm'
+                              : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed line-through'
+                            }
+                          `}
+                          title={slot.available ? undefined : 'This time slot is already booked'}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">
+                              {formatTime(slot.time)}
+                            </span>
+                            {!slot.available && (
+                              <span className="text-xs text-red-500 font-medium">
+                                Booked
+                              </span>
+                            )}
+                          </div>
+                          {eventType.metadata?.duration && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {eventType.metadata.duration} minutes
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 text-sm">
+                        No available time slots for this date
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Select a date
+                  </h3>
+                  <p className="text-gray-500 text-sm">
+                    Choose an available date from the calendar to see available time slots
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* Booking Form Modal - Add null check for selectedDate and selectedTime */}
