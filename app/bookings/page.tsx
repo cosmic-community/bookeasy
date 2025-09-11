@@ -1,4 +1,4 @@
-import { getBookings, getSettings } from '@/lib/cosmic'
+import { getBookings, getAllBookings, getSettings } from '@/lib/cosmic'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BookingsCalendar from '@/components/BookingsCalendar'
@@ -10,8 +10,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function BookingsPage() {
   try {
-    const [bookings, settingsResponse] = await Promise.all([
-      getBookings(),
+    const [bookings, allBookings, settingsResponse] = await Promise.all([
+      getBookings(), // Future bookings only for list view
+      getAllBookings(), // All bookings including past for calendar view
       getSettings()
     ])
 
@@ -47,6 +48,7 @@ export default async function BookingsPage() {
 
           <BookingsCalendar 
             bookings={bookings}
+            allBookings={allBookings}
           />
         </main>
 

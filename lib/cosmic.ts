@@ -124,6 +124,44 @@ export async function getBookings(): Promise<Booking[]> {
   }
 }
 
+// Get ALL bookings including past ones (for admin calendar view)
+export async function getAllBookings(): Promise<Booking[]> {
+  try {
+    const response = await cosmic.objects
+      .find({ type: 'bookings' })
+      .props(['id', 'title', 'slug', 'metadata'])
+      .depth(1);
+    
+    const bookings = response.objects as Booking[];
+    
+    // Sort all bookings by booking_date, then by booking_time
+    const sortedBookings = bookings.sort((a, b) => {
+      const dateA = a.metadata?.booking_date || '';
+      const dateB = b.metadata?.booking_date || '';
+      const timeA = a.metadata?.booking_time || '';
+      const timeB = b.metadata?.booking_time || '';
+      
+      // Primary sort by booking_date ascending (earliest first)
+      const dateComparison = dateA.localeCompare(dateB);
+      
+      // If dates are the same, sort by booking_time ascending (earliest first)
+      if (dateComparison === 0) {
+        return timeA.localeCompare(timeB);
+      }
+      
+      return dateComparison;
+    });
+    
+    return sortedBookings;
+  } catch (error) {
+    if (hasStatus(error) && error.status === 404) {
+      return [];
+    }
+    console.error('Error fetching all bookings:', error);
+    throw new Error('Failed to fetch all bookings');
+  }
+}
+
 // Get bookings for a specific date
 export async function getBookingsForDate(date: string): Promise<Booking[]> {
   try {
