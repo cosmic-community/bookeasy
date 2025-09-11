@@ -66,7 +66,7 @@ export default function MeetingDetailsModal({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus.value }),
       })
 
       if (!response.ok) {
@@ -122,10 +122,10 @@ export default function MeetingDetailsModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg shadow-xl max-w-md w-full mx-auto my-8"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
